@@ -1,0 +1,25 @@
+/* Sleeker react-colorful: smaller pointers, slimmer hue/alpha bars. Scoped to
+   the .cp-picker wrapper so it only affects our property color picker. */
+.cp-picker .react-colorful {
+  width: 196px;
+  height: auto;
+}
+.cp-picker .react-colorful__saturation {
+  height: 132px;
+  border-radius: 6px 6px 0 0;
+}
+.cp-picker .react-colorful__hue,
+.cp-picker .react-colorful__alpha {
+  height: 12px;
+  margin-top: 8px;
+  border-radius: 6px;
+}
+.cp-picker .react-colorful__pointer {
+  width: 13px;
+  height: 13px;
+  border-width: 2px;
+}
+.cp-picker .react-colorful__saturation-pointer {
+  width: 16px;
+  height: 16px;
+}

@@ -55,6 +55,9 @@ crates/*/Cargo.lock
 
 tmp
 
+# Superpowers brainstorming companion artifacts
+.superpowers/
+
 .vercel
 
 # FreeCut workspace artifacts, if the repo folder itself is picked as a
@@ -71,3 +74,6 @@ tmp
 /waveform-bin/
 
 *.lock
+
+# Codebase docs vault is its own standalone git repo
+/docs/codebase/

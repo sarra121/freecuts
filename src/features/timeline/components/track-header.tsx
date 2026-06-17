@@ -8,14 +8,13 @@ import {
   ContextMenuSeparator,
   ContextMenuTrigger,
 } from '@/components/ui/context-menu'
-import { Power, PowerOff, Lock, GripVertical, Radio, FoldHorizontal, Link2 } from 'lucide-react'
+import { Power, PowerOff, Lock, GripVertical, FoldHorizontal } from 'lucide-react'
 import type { TimelineTrack } from '@/types/timeline'
 import { useTrackDrag } from '../hooks/use-track-drag'
 import { TIMELINE_SIDEBAR_WIDTH } from '../constants'
 import { EDITOR_LAYOUT_CSS_VALUES } from '@/config/editor-layout'
 import { useItemsStore } from '../stores/items-store'
 import { isTrackDisabled } from '@/features/timeline/utils/classic-tracks'
-import { isTrackSyncLockActive } from '../utils/track-sync-lock'
 
 interface TrackHeaderProps {
   track: TimelineTrack
@@ -24,9 +23,7 @@ interface TrackHeaderProps {
   canDeleteTrack: boolean
   canDeleteEmptyTracks: boolean
   onToggleLock: () => void
-  onToggleSyncLock: () => void
   onToggleDisabled: () => void
-  onToggleSolo: () => void
   onSelect: (e: React.MouseEvent) => void
   onCloseGaps?: () => void
   onAddVideoTrack: () => void
@@ -65,9 +62,7 @@ export const TrackHeader = memo(function TrackHeader({
   canDeleteTrack,
   canDeleteEmptyTracks,
   onToggleLock,
-  onToggleSyncLock,
   onToggleDisabled,
-  onToggleSolo,
   onSelect,
   onCloseGaps,
   onAddVideoTrack,
@@ -77,7 +72,6 @@ export const TrackHeader = memo(function TrackHeader({
 }: TrackHeaderProps) {
   const { t } = useTranslation()
   const itemCount = useItemsStore((s) => s.itemsByTrackId[track.id]?.length ?? 0)
-  const syncLockEnabled = isTrackSyncLockActive(track)
   const trackDisabled = isTrackDisabled(track)
 
   // Use track drag hook (visuals handled centrally by timeline.tsx via DOM)
@@ -143,34 +137,6 @@ export const TrackHeader = memo(function TrackHeader({
               )}
             </Button>
 
-            {/* Solo Button */}
-            <Button
-              variant="ghost"
-              size="icon"
-              className="rounded hover:bg-secondary"
-              style={{
-                width: EDITOR_LAYOUT_CSS_VALUES.toolbarButtonSize,
-                height: EDITOR_LAYOUT_CSS_VALUES.toolbarButtonSize,
-              }}
-              onClick={(e) => {
-                e.stopPropagation()
-                onToggleSolo()
-              }}
-              onMouseDown={(e) => e.stopPropagation()}
-              aria-label={
-                track.solo
-                  ? t('timeline.trackHeader.unsoloTrack')
-                  : t('timeline.trackHeader.soloTrack')
-              }
-              data-tooltip={
-                track.solo
-                  ? t('timeline.trackHeader.unsoloTrack')
-                  : t('timeline.trackHeader.soloTrack')
-              }
-            >
-              <Radio className={`w-3 h-3 ${track.solo ? 'text-primary' : ''}`} />
-            </Button>
-
             {/* Lock Button */}
             <Button
               variant="ghost"
@@ -197,33 +163,6 @@ export const TrackHeader = memo(function TrackHeader({
               }
             >
               <Lock className={`w-3 h-3 ${track.locked ? 'text-primary' : 'opacity-70'}`} />
-            </Button>
-
-            <Button
-              variant="ghost"
-              size="icon"
-              className="rounded hover:bg-secondary"
-              style={{
-                width: EDITOR_LAYOUT_CSS_VALUES.toolbarButtonSize,
-                height: EDITOR_LAYOUT_CSS_VALUES.toolbarButtonSize,
-              }}
-              onClick={(e) => {
-                e.stopPropagation()
-                onToggleSyncLock()
-              }}
-              onMouseDown={(e) => e.stopPropagation()}
-              aria-label={
-                syncLockEnabled
-                  ? t('timeline.trackHeader.disableSyncLock')
-                  : t('timeline.trackHeader.enableSyncLock')
-              }
-              data-tooltip={
-                syncLockEnabled
-                  ? t('timeline.trackHeader.disableSyncLock')
-                  : t('timeline.trackHeader.enableSyncLock')
-              }
-            >
-              <Link2 className={`w-3 h-3 ${syncLockEnabled ? 'text-primary' : 'opacity-70'}`} />
             </Button>
 
             <Button

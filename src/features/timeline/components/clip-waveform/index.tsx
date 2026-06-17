@@ -24,6 +24,8 @@ const logger = createLogger('ClipWaveform')
 const WAVEFORM_VERTICAL_PADDING_PX = 3
 
 interface ClipWaveformProps {
+  /** Timeline item type — used to gate waveform generation for video items */
+  itemType?: string
   /** Media ID from the timeline item */
   mediaId: string
   /** Visible width of the clip in pixels */
@@ -60,6 +62,7 @@ interface ClipWaveformProps {
  * Uses tiled canvas for large clips and shows skeleton while loading.
  */
 export const ClipWaveform = memo(function ClipWaveform({
+  itemType,
   mediaId,
   clipWidth,
   renderWidth,
@@ -122,6 +125,12 @@ export const ClipWaveform = memo(function ClipWaveform({
 
   // Load blob URL for the media when visible, including post-invalidation retries.
   useEffect(() => {
+    // MatchView strip-down: video audio comes from the <video> element directly;
+    // no separate decode/waveform.
+    if (itemType === 'video') {
+      return
+    }
+
     // Skip if already started loading (prevents re-triggering on visibility changes)
     if (hasStartedLoadingRef.current) {
       return
@@ -182,7 +191,7 @@ export const ClipWaveform = memo(function ClipWaveform({
     return () => {
       mounted = false
     }
-  }, [mediaId, isVisible, blobUrlVersion, hasStartedLoadingRef, setBlobUrl])
+  }, [mediaId, isVisible, blobUrlVersion, hasStartedLoadingRef, setBlobUrl, itemType])
 
   // Use waveform hook. It can hydrate persisted waveforms before blobUrl is
   // available; blobUrl is only required when the cache has to generate.
@@ -191,7 +200,9 @@ export const ClipWaveform = memo(function ClipWaveform({
       mediaId,
       blobUrl,
       isVisible,
-      enabled: audioCodecSupported,
+      // MatchView strip-down: also disable waveform hook for video items so the
+      // worker is never kicked even if itemType prop is added later to other callers.
+      enabled: audioCodecSupported && itemType !== 'video',
       deferDurationSec: sourceDuration,
     })
   const normalizationPeak = maxPeak > 0 ? maxPeak : 1
@@ -340,6 +351,12 @@ export const ClipWaveform = memo(function ClipWaveform({
     activeTileCount,
     phaseKey: mediaId,
   })
+
+  // MatchView strip-down: video audio comes from the <video> element directly;
+  // no separate decode/waveform. Render nothing after all hooks have been called.
+  if (itemType === 'video') {
+    return null
+  }
 
   // Show empty state for unsupported/failed waveforms (no infinite skeleton).
   if (!audioCodecSupported || !!error) {

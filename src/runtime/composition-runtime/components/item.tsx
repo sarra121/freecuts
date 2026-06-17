@@ -11,7 +11,11 @@ import { GifPlayer } from './gif-player'
 import { ItemVisualWrapper } from './item-visual-wrapper'
 import { TextContent } from './text-content'
 import { SubtitleSegmentContent } from './subtitle-segment-content'
+// MatchView: kept as a side-effect import so the legacy renderer is still
+// type-checked + bundled; the gate in the shape branch below sends draws to
+// the Konva ShapesStage instead. Restore by uncommenting `<ShapeContent />`.
 import { ShapeContent } from './shape-content'
+void ShapeContent
 import { VideoContent } from './video-content'
 import { CompositionContent } from './composition-content'
 import { useVideoConfig } from '../hooks/use-player-compat'
@@ -545,13 +549,26 @@ export const Item = React.memo<ItemProps>(
     }
 
     if (item.type === 'shape') {
-      // Use new ItemVisualWrapper for consolidated state and fixed DOM structure
-      // ShapeContent renders the appropriate Composition shape based on shapeType
+      // MatchView: shape rendering is now owned by the Konva ShapesStage
+      // mounted in preview-stage.tsx. The legacy DOM ShapeContent renderer
+      // is gated to avoid duplicate draws — in particular, the `default`
+      // case in shape-content.tsx renders a fillColor-coloured full-rect
+      // div for unknown shapeTypes (arrow, free-polygon), which was the
+      // visible "whitish overlay" the user saw on top of Konva shapes.
+      //
+      // Mask shapes (item.isMask === true) are intercepted upstream in
+      // composition-content.tsx and never reach this branch, so they're
+      // unaffected by this gate.
+      //
+      // Restore the legacy DOM path by uncommenting the block below.
+      return null
+      /*
       return (
         <ItemVisualWrapper item={item} masks={masks}>
           <ShapeContent item={item} />
         </ItemVisualWrapper>
       )
+      */
     }
 
     if (item.type === 'composition') {

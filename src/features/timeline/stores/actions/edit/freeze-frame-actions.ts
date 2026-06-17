@@ -176,7 +176,7 @@ export async function insertFreezeFrame(itemId: string, playheadFrame: number): 
     // Prepend the media item to the store only after execute() succeeds so a
     // failed _splitItem (e.g. the source clip was removed between validation
     // and execute) doesn't leave an orphaned entry in the media library UI.
-    const freezeDurationFrames = Math.round(fps * 2) // 2 seconds
+    const freezeDurationFrames = Math.round(fps * 5) // 5 seconds (matches shape-clip default)
 
     const success = execute<boolean>(
       'INSERT_FREEZE_FRAME',

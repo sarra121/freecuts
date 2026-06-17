@@ -73,7 +73,10 @@
       "autoSave": "Auto-save",
       "interval": "Interval",
       "intervalMinutes": "{{count}}m",
-      "undoHistoryDepth": "Undo History Depth"
+      "undoHistoryDepth": "Undo History Depth",
+      "theme": "Theme",
+      "themeDark": "Dark",
+      "themeLight": "Light"
     },
     "ai": {
       "captionSampleInterval": "Caption sample interval",

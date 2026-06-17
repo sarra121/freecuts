@@ -191,8 +191,11 @@ export function NumberInput({
   const handleWheel = useCallback(
     (e: React.WheelEvent) => {
       if (disabled) return
-      // Only respond when hovered, not when text-editing
-      if (document.activeElement === inputRef.current) return
+      // Only adjust via the wheel when the field is focused. Otherwise merely
+      // scrolling the panel with the cursor over a field would crank its value
+      // (and swallow the scroll). Focus = the user clicked into this field, so
+      // wheel-to-adjust is intentional there.
+      if (document.activeElement !== inputRef.current) return
       e.preventDefault()
       const currentValue = value === 'mixed' ? 0 : value
       const multiplier = e.shiftKey ? 0.1 : 1

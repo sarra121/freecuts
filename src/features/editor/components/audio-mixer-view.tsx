@@ -27,7 +27,10 @@ import { getMixerLiveGain, setMixerLiveGains } from '@/shared/state/mixer-live-g
 export interface AudioMixerTrack {
   id: string
   name: string
-  kind?: 'video' | 'audio'
+  // Mirrors TimelineTrack.kind; 'shape' tracks are filtered out by the
+  // mixer caller before getting here, but the union is widened to keep
+  // the type assignment compatible.
+  kind?: 'video' | 'audio' | 'shape'
   color?: string
   muted: boolean
   solo: boolean

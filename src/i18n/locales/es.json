@@ -73,7 +73,10 @@
       "autoSave": "Guardado automático",
       "interval": "Intervalo",
       "intervalMinutes": "{{count}} min",
-      "undoHistoryDepth": "Profundidad del historial de deshacer"
+      "undoHistoryDepth": "Profundidad del historial de deshacer",
+      "theme": "Tema",
+      "themeDark": "Oscuro",
+      "themeLight": "Claro"
     },
     "ai": {
       "captionSampleInterval": "Intervalo de muestreo de subtítulos",

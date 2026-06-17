@@ -71,8 +71,6 @@ export const Timeline = memo(function Timeline({ duration }: TimelineProps) {
     removeTracks,
     toggleTrackDisabled,
     toggleTrackLock,
-    toggleTrackSyncLock,
-    toggleTrackSolo,
   } = useTimelineTracks()
   // Selection state - use granular selectors
   const activeTrackId = useSelectionStore((s) => s.activeTrackId)
@@ -102,7 +100,14 @@ export const Timeline = memo(function Timeline({ duration }: TimelineProps) {
     ),
   )
   const videoTracks = useMemo(
-    () => visibleTracks.filter((track) => getTrackKind(track) === 'video'),
+    // MatchView: shape tracks (annotation overlays) are visual content and
+    // belong in the upper / "video" section so their clips render. Drag-drop
+    // targeting elsewhere keeps using `getTrackKind === 'video'`, which
+    // still returns null for shape tracks — media drops won't land on them.
+    () =>
+      visibleTracks.filter(
+        (track) => getTrackKind(track) === 'video' || track.kind === 'shape',
+      ),
     [visibleTracks],
   )
   const audioTracks = useMemo(
@@ -139,8 +144,6 @@ export const Timeline = memo(function Timeline({ duration }: TimelineProps) {
   const [trackRowsViewportHeight, setTrackRowsViewportHeight] = useState(0)
   const [sectionDividerPosition, setSectionDividerPosition] = useState<number | null>(null)
 
-  const colorScopesOpen = useEditorStore((s) => s.colorScopesOpen)
-  const toggleColorScopesOpen = useEditorStore((s) => s.toggleColorScopesOpen)
   const toggleKeyframeEditorOpen = useEditorStore((s) => s.toggleKeyframeEditorOpen)
   const setTimelineTracks = useTimelineStore((s) => s.setTracks)
 
@@ -799,9 +802,7 @@ export const Timeline = memo(function Timeline({ duration }: TimelineProps) {
                   canDeleteTrack={tracks.length > 1}
                   canDeleteEmptyTracks={canDeleteEmptyTracks}
                   onToggleLock={() => toggleTrackLock(track.id)}
-                  onToggleSyncLock={() => toggleTrackSyncLock(track.id)}
                   onToggleDisabled={() => toggleTrackDisabled(track.id)}
-                  onToggleSolo={() => toggleTrackSolo(track.id)}
                   onCloseGaps={() => useTimelineStore.getState().closeAllGapsOnTrack(track.id)}
                   onAddVideoTrack={addVideoTrackToTop}
                   onAddAudioTrack={appendAudioTrackToSection}
@@ -866,8 +867,6 @@ export const Timeline = memo(function Timeline({ duration }: TimelineProps) {
         onZoomIn={zoomHandlers?.handleZoomIn}
         onZoomOut={zoomHandlers?.handleZoomOut}
         onZoomToFit={zoomHandlers?.handleZoomToFit}
-        isScopesPanelOpen={colorScopesOpen}
-        onToggleScopesPanel={toggleColorScopesOpen}
       />
 
       {/* Composition Breadcrumbs - shown when inside a sub-composition */}

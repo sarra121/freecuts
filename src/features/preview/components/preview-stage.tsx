@@ -16,6 +16,7 @@ import { usePlaybackStore } from '@/shared/state/playback'
 import { EDITOR_LAYOUT_CSS_VALUES } from '@/config/editor-layout'
 import { FAST_SCRUB_RENDERER_ENABLED } from '../utils/preview-constants'
 import { getPreviewPixelSnapOffset, ZERO_PIXEL_SNAP_OFFSET } from '../utils/preview-pixel-snap'
+import { ShapesStage } from '@/features/preview/deps/shapes-konva'
 
 interface PreviewStageProps {
   backgroundRef: RefObject<HTMLDivElement | null>
@@ -43,7 +44,10 @@ export const PreviewStage = memo(function PreviewStage({
   backgroundRef,
   playerRef,
   scrubCanvasRef,
-  gpuEffectsCanvasRef,
+  // MatchView: gpuEffectsCanvasRef prop kept in interface (callers still pass it),
+  // but the canvas it would attach to is commented out below, so it's
+  // unused inside the body. Restore the destructure if the canvas comes back.
+  // gpuEffectsCanvasRef,
   needsOverflow,
   playerSize,
   playerRenderSize,
@@ -197,16 +201,37 @@ export const PreviewStage = memo(function PreviewStage({
                 />
               )}
 
+              {/* Konva shapes layer — sits above scrubCanvasRef so
+                  annotations land on top of video & effects. Its container
+                  toggles pointer-events based on whether a draw tool is
+                  active or a shape is selected (see ShapesStage). */}
+              <div
+                className="absolute inset-0"
+                style={{ zIndex: 5, width: '100%', height: '100%' }}
+              >
+                <ShapesStage
+                  displayWidth={playerSize.width}
+                  displayHeight={playerSize.height}
+                  projectWidth={playerRenderSize.width}
+                  projectHeight={playerRenderSize.height}
+                />
+              </div>
+
+              {/* MatchView: GPU-effects overlay canvas disabled — no per-clip
+                  effects pipeline in the UI. The useGpuEffectsOverlay hook
+                  still runs but the ref stays null so writes no-op.
+                  Restore by uncommenting.
               <canvas
                 ref={gpuEffectsCanvasRef}
                 className="absolute inset-0 pointer-events-none"
                 style={{
                   width: '100%',
                   height: '100%',
-                  zIndex: 5,
+                  zIndex: 6,
                   visibility: 'hidden',
                 }}
               />
+              */}
 
               {perfPanel}
               {comparisonOverlay}

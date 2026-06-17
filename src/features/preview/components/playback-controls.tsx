@@ -15,13 +15,14 @@ import {
   Loader2,
 } from 'lucide-react'
 import { usePlaybackStore } from '@/shared/state/playback'
+import { useSelectionStore } from '@/shared/state/selection'
 import { usePreviewBridgeStore } from '@/shared/state/preview-bridge'
 import { EDITOR_LAYOUT_CSS_VALUES } from '@/config/editor-layout'
 import {
-  useMediaLibraryStore,
-  mediaLibraryService,
-} from '@/features/preview/deps/media-library-contract'
-import { formatTimecode } from '@/shared/utils/time-utils'
+  insertFreezeFrame,
+  useItemsStore,
+  useTimelineStore,
+} from '@/features/preview/deps/timeline-store'
 import { toast } from 'sonner'
 import { MonitorVolumeControl } from './monitor-volume-control'
 
@@ -30,57 +31,29 @@ interface PlaybackControlsProps {
   fps: number
 }
 
-async function canvasToBlob(
-  canvas: OffscreenCanvas | HTMLCanvasElement,
-  type: string,
-): Promise<Blob> {
-  if ('convertToBlob' in canvas) {
-    return canvas.convertToBlob({ type })
-  }
+/**
+ * Pick the video clip a freeze-frame should split: prefer the selected clip
+ * when it's a video the playhead sits inside, otherwise the top-most (lowest
+ * track `order`) video clip covering the playhead. Returns null when no video
+ * covers the playhead. Edge frames are excluded (strict inequality) because
+ * insertFreezeFrame needs room on both sides of the split.
+ */
+function findFreezeTargetClipId(frame: number): string | null {
+  const items = useItemsStore.getState().items
+  const covers = (it: (typeof items)[number]) =>
+    it.type === 'video' && frame > it.from && frame < it.from + it.durationInFrames
 
-  return new Promise<Blob>((resolve, reject) => {
-    canvas.toBlob((blob) => {
-      if (blob) {
-        resolve(blob)
-        return
-      }
-      reject(new Error('Failed to convert frame to blob'))
-    }, type)
-  })
-}
+  const selectedIds = useSelectionStore.getState().selectedItemIds
+  const selected = items.find((it) => selectedIds.includes(it.id) && covers(it))
+  if (selected) return selected.id
 
-async function dataUrlToBlob(dataUrl: string): Promise<Blob> {
-  const response = await fetch(dataUrl)
-  return response.blob()
-}
-
-function scheduleBlobUrlRevoke(url: string): void {
-  if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
-    window.requestIdleCallback(() => URL.revokeObjectURL(url))
-    return
-  }
-
-  setTimeout(() => URL.revokeObjectURL(url), 0)
-}
-
-function downloadBlob(blob: Blob, fileName: string): void {
-  const url = URL.createObjectURL(blob)
-  const anchor = document.createElement('a')
-  anchor.href = url
-  anchor.download = fileName
-  document.body.appendChild(anchor)
-  anchor.click()
-  document.body.removeChild(anchor)
-  scheduleBlobUrlRevoke(url)
-}
-
-function buildFrameFileName(frame: number, fps: number, totalFrames: number): string {
-  const safeFrame = Math.max(0, Math.round(frame))
-  const safeFps = Number.isFinite(fps) && fps > 0 ? fps : 30
-  const frameDigits = Math.max(String(Math.max(0, totalFrames - 1)).length, 1)
-  const paddedFrame = String(safeFrame).padStart(frameDigits, '0')
-  const safeTimecode = formatTimecode(safeFrame, safeFps).replaceAll(':', '-')
-  return `frame-${paddedFrame}-${safeTimecode}.png`
+  const tracks = useTimelineStore.getState().tracks
+  const orderOf = (trackId: string) =>
+    tracks.find((tr) => tr.id === trackId)?.order ?? Number.POSITIVE_INFINITY
+  const candidate = items
+    .filter(covers)
+    .sort((a, b) => orderOf(a.trackId) - orderOf(b.trackId))[0]
+  return candidate?.id ?? null
 }
 
 /**
@@ -98,7 +71,7 @@ const btnSize = {
   height: EDITOR_LAYOUT_CSS_VALUES.toolbarButtonSize,
 } as const
 
-export function PlaybackControls({ totalFrames, fps }: PlaybackControlsProps) {
+export function PlaybackControls({ totalFrames }: PlaybackControlsProps) {
   const { t } = useTranslation()
   const [isSavingFrame, setIsSavingFrame] = useState(false)
 
@@ -138,78 +111,32 @@ export function PlaybackControls({ totalFrames, fps }: PlaybackControlsProps) {
     commitTimelineSeek(Math.min(lastValidFrame, currentFrame + 1))
   }
 
-  const handleSaveFrame = async () => {
+  // Camera button: freeze the frame at the playhead and splice it in as a
+  // still image. insertFreezeFrame splits the target video at the playhead,
+  // extracts the source frame at native resolution, stores it as a media item,
+  // and ripples the right half + everything after — all in one undo step.
+  const handleFreezeFrame = async () => {
     if (isSavingFrame) return
 
     setIsSavingFrame(true)
-
     try {
       const playback = usePlaybackStore.getState()
-      const previewBridge = usePreviewBridgeStore.getState()
-      const currentFrame = playback.previewFrame ?? playback.currentFrame
-      const fileName = buildFrameFileName(currentFrame, fps, totalFrames)
+      const frame = Math.round(playback.previewFrame ?? playback.currentFrame)
 
-      let frameBlob: Blob | null = null
-      let frameWidth: number | undefined
-      let frameHeight: number | undefined
-
-      if (previewBridge.captureCanvasSource) {
-        const canvasSource = await previewBridge.captureCanvasSource()
-        if (canvasSource) {
-          frameBlob = await canvasToBlob(canvasSource, 'image/png')
-          frameWidth = canvasSource.width
-          frameHeight = canvasSource.height
-        }
-      }
-
-      if (!frameBlob && previewBridge.captureFrame) {
-        const dataUrl = await previewBridge.captureFrame({
-          format: 'image/png',
-          quality: 1,
-          fullResolution: true,
-        })
-
-        if (dataUrl) {
-          frameBlob = await dataUrlToBlob(dataUrl)
-        }
-      }
-
-      if (!frameBlob) {
-        toast.error(i18n.t('preview.controls.captureFailed'))
+      const clipId = findFreezeTargetClipId(frame)
+      if (!clipId) {
+        toast.error(i18n.t('preview.controls.saveFrameFailed'))
         return
       }
 
-      downloadBlob(frameBlob, fileName)
-
-      const currentProjectId = useMediaLibraryStore.getState().currentProjectId
-      if (!currentProjectId) {
-        toast.error(i18n.t('preview.controls.frameDownloadedNoProject'))
-        return
+      const inserted = await insertFreezeFrame(clipId, frame)
+      if (inserted) {
+        toast.success(i18n.t('preview.controls.frameSaved'))
+      } else {
+        toast.error(i18n.t('preview.controls.saveFrameFailed'))
       }
-
-      const frameFile = new File([frameBlob], fileName, {
-        type: 'image/png',
-        lastModified: Date.now(),
-      })
-
-      const savedMedia = await mediaLibraryService.importGeneratedImage(
-        frameFile,
-        currentProjectId,
-        {
-          width: frameWidth,
-          height: frameHeight,
-          tags: ['frame-capture'],
-          codec: 'png',
-        },
-      )
-
-      useMediaLibraryStore.getState().prependMediaItem(savedMedia)
-
-      toast.success(i18n.t('preview.controls.frameSaved', { name: savedMedia.fileName }))
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : i18n.t('preview.controls.saveFrameFailed')
-      toast.error(i18n.t('preview.controls.frameDownloadedNotSaved', { message }))
+    } catch {
+      toast.error(i18n.t('preview.controls.saveFrameFailed'))
     } finally {
       setIsSavingFrame(false)
     }
@@ -293,7 +220,7 @@ export function PlaybackControls({ totalFrames, fps }: PlaybackControlsProps) {
           className="flex-shrink-0"
           style={btnSize}
           onClick={() => {
-            void handleSaveFrame()
+            void handleFreezeFrame()
           }}
           disabled={isSavingFrame}
           data-tooltip={

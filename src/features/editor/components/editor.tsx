@@ -10,14 +10,7 @@ import { MediaSidebar } from './media-sidebar'
 import { PropertiesSidebar } from './properties-sidebar'
 import { PreviewArea } from './preview-area'
 import { InteractionLockRegion } from './interaction-lock-region'
-import { AudioMeterPanel } from './audio-meter-panel'
-import {
-  Timeline,
-  BentoLayoutDialog,
-  ReverseConformDialog,
-  SilenceRemovalDialog,
-  FillerRemovalDialog,
-} from '@/features/editor/deps/timeline-ui'
+import { Timeline } from '@/features/editor/deps/timeline-ui'
 import { toast } from 'sonner'
 import { useEditorHotkeys } from '@/features/editor/hooks/use-editor-hotkeys'
 import { useAutoSave } from '../hooks/use-auto-save'
@@ -27,10 +20,10 @@ import {
 } from '@/features/editor/deps/timeline-hooks'
 import { initTransitionChainSubscription } from '@/features/editor/deps/timeline-subscriptions'
 import { useTimelineStore } from '@/features/editor/deps/timeline-store'
-import { importBundleExportDialog } from '@/features/editor/deps/project-bundle'
 import { useMediaLibraryStore } from '@/features/editor/deps/media-library'
 import { useSettingsStore } from '@/features/editor/deps/settings'
 import { useMaskEditorStore } from '@/features/editor/deps/preview'
+import { useDrawToolStore, useShapeEditStore } from '@/features/editor/deps/shapes-konva'
 import { usePlaybackStore } from '@/shared/state/playback'
 import { useEditorStore } from '@/shared/state/editor'
 import { clearPreviewAudioCache } from '@/features/editor/deps/composition-runtime'
@@ -43,15 +36,7 @@ import {
   formatProjectUpgradeBackupName,
 } from '@/features/editor/deps/projects'
 import { ProjectUpgradeDialog } from './project-upgrade-dialog'
-import { useClearKeyframesDialogStore } from '@/shared/state/clear-keyframes-dialog'
-import { useTtsGenerateDialogStore } from '@/shared/state/tts-generate-dialog'
 import { useProjectMediaMatchDialogStore } from '@/shared/state/project-media-match-dialog'
-import {
-  importEmbeddedSubtitleTrackPickerHost,
-  importSubtitleScanProgressDialog,
-  useEmbeddedSubtitlePickerStore,
-  useSubtitleScanProgressStore,
-} from '@/features/editor/deps/media-library'
 const logger = createLogger('Editor')
 const EDITOR_PROJECT_ROUTE_ID = '/editor/$projectId'
 const LazyExportDialog = lazy(() =>
@@ -59,42 +44,13 @@ const LazyExportDialog = lazy(() =>
     default: module.ExportDialog,
   })),
 )
-const LazyBundleExportDialog = lazy(() =>
-  importBundleExportDialog().then((module) => ({
-    default: module.BundleExportDialog,
-  })),
-)
-const LazyClearKeyframesDialog = lazy(() =>
-  import('@/features/editor/components/clear-keyframes-dialog').then((module) => ({
-    default: module.ClearKeyframesDialog,
-  })),
-)
-const LazyTtsGenerateDialog = lazy(() =>
-  import('@/features/editor/components/tts-generate-dialog').then((module) => ({
-    default: module.TtsGenerateDialog,
-  })),
-)
 const LazyProjectMediaMatchDialog = lazy(() =>
   import('@/features/editor/components/project-media-match-dialog').then((module) => ({
     default: module.ProjectMediaMatchDialog,
   })),
 )
-const LazyEmbeddedSubtitleTrackPickerHost = lazy(() =>
-  importEmbeddedSubtitleTrackPickerHost().then((module) => ({
-    default: module.EmbeddedSubtitleTrackPickerHost,
-  })),
-)
-const LazySubtitleScanProgressDialog = lazy(() =>
-  importSubtitleScanProgressDialog().then((module) => ({
-    default: module.SubtitleScanProgressDialog,
-  })),
-)
 function preloadExportDialog() {
   return importExportDialog()
-}
-
-function preloadBundleExportDialog() {
-  return importBundleExportDialog()
 }
 
 /** Project metadata passed from route loader (timeline loaded separately via loadTimeline) */
@@ -182,39 +138,15 @@ export const Editor = memo(function Editor({ projectId, project, migration }: Ed
 })
 
 const EditorDialogHost = memo(function EditorDialogHost({ projectId }: { projectId: string }) {
-  const clearKeyframesDialogOpen = useClearKeyframesDialogStore((s) => s.isOpen)
-  const ttsGenerateDialogOpen = useTtsGenerateDialogStore((s) => s.isOpen)
   const projectMediaMatchDialogOpen = useProjectMediaMatchDialogStore(
     (s) => s.isOpen && s.projectId === projectId,
   )
-  const embeddedSubtitlePickerOpen = useEmbeddedSubtitlePickerStore((s) => s.media !== null)
-  const subtitleScanProgressOpen = useSubtitleScanProgressStore((s) => s.open)
 
   return (
     <>
-      {clearKeyframesDialogOpen && (
-        <Suspense fallback={null}>
-          <LazyClearKeyframesDialog />
-        </Suspense>
-      )}
       {projectMediaMatchDialogOpen && (
         <Suspense fallback={null}>
           <LazyProjectMediaMatchDialog projectId={projectId} />
-        </Suspense>
-      )}
-      {ttsGenerateDialogOpen && (
-        <Suspense fallback={null}>
-          <LazyTtsGenerateDialog />
-        </Suspense>
-      )}
-      {embeddedSubtitlePickerOpen && (
-        <Suspense fallback={null}>
-          <LazyEmbeddedSubtitleTrackPickerHost />
-        </Suspense>
-      )}
-      {subtitleScanProgressOpen && (
-        <Suspense fallback={null}>
-          <LazySubtitleScanProgressDialog />
         </Suspense>
       )}
     </>
@@ -229,8 +161,6 @@ export const LoadedEditor = memo(function LoadedEditor({
   const { t } = useTranslation()
   const router = useRouter()
   const [exportDialogOpen, setExportDialogOpen] = useState(false)
-  const [bundleExportDialogOpen, setBundleExportDialogOpen] = useState(false)
-  const [bundleFileHandle, setBundleFileHandle] = useState<FileSystemFileHandle | undefined>()
   const editorDensity = useSettingsStore((s) => s.editorDensity)
   const snapEnabledPreference = useSettingsStore((s) => s.snapEnabled)
   const editorLayout = getEditorLayout(editorDensity)
@@ -262,11 +192,10 @@ export const LoadedEditor = memo(function LoadedEditor({
     }
   }, [])
 
-  // Preload export dialogs during idle time so they open instantly.
+  // Preload export dialog during idle time so it opens instantly.
   useEffect(() => {
     const id = requestIdleCallback(() => {
       preloadExportDialog()
-      preloadBundleExportDialog()
     })
     return () => cancelIdleCallback(id)
   }, [])
@@ -288,6 +217,21 @@ export const LoadedEditor = memo(function LoadedEditor({
     // A non-null previewFrame puts preview into "scrubbing" mode, which can
     // defer media URL resolution during project open.
     playbackStore.setPreviewFrame(null)
+
+    // Reset shapes-konva ephemeral state on project switch. These stores live
+    // outside the timeline store (so loadTimeline's setItems doesn't touch
+    // them), so without this an armed draw tool / in-progress draw / live edit
+    // preview from the previous project leaks into the newly opened one.
+    useDrawToolStore.getState().cancel()
+    useShapeEditStore.getState().reset()
+
+    // Synchronously empty the timeline BEFORE the async loadTimeline below.
+    // loadTimeline awaits getProject()+migration+hydration, and until it calls
+    // setItems() the items-store still holds the PREVIOUS project's items — so
+    // the Konva shape overlay (which renders instantly from item data) flashes
+    // the old project's shapes during the switch. Clearing first replaces that
+    // leak with a clean empty frame until the new project's data lands.
+    useTimelineStore.getState().clearTimeline()
 
     // Set current project context for media library (v3: project-scoped media)
     setMediaProject(projectId)
@@ -412,38 +356,6 @@ export const LoadedEditor = memo(function LoadedEditor({
     setExportDialogOpen(true)
   }, [])
 
-  const handleExportBundle = useCallback(async () => {
-    void preloadBundleExportDialog()
-
-    // Show native save picker BEFORE opening the modal dialog to avoid
-    // focus-loss conflicts between the native picker and Radix Dialog.
-    if (typeof window.showSaveFilePicker === 'function') {
-      const safeName = project.name
-        .replace(/[<>:"/\\|?*]/g, '_')
-        .replace(/\s+/g, '_')
-        .substring(0, 100)
-      try {
-        const handle = await window.showSaveFilePicker({
-          suggestedName: `${safeName}.freecut.zip`,
-          types: [
-            {
-              description: i18n.t('editor.editor.projectBundle'),
-              accept: { 'application/zip': ['.freecut.zip'] },
-            },
-          ],
-        })
-        setBundleFileHandle(handle)
-      } catch {
-        // User cancelled the picker - don't open the dialog
-        return
-      }
-    } else {
-      setBundleFileHandle(undefined)
-    }
-
-    setBundleExportDialogOpen(true)
-  }, [project.name])
-
   // Enable keyboard shortcuts
   useEditorHotkeys({
     onSave: handleSave,
@@ -479,7 +391,6 @@ export const LoadedEditor = memo(function LoadedEditor({
           isDirty={isDirty}
           onSave={handleSave}
           onExport={handleExport}
-          onExportBundle={handleExportBundle}
         />
       </InteractionLockRegion>
 
@@ -532,8 +443,10 @@ export const LoadedEditor = memo(function LoadedEditor({
             </div>
           </ResizablePanel>
 
+          {/* MatchView: visible drag knob removed (was `withHandle`). The
+              handle strip stays so ResizablePanelGroup still works, but the
+              clunky grip indicator is gone. */}
           <ResizableHandle
-            withHandle
             className={isMaskEditingActive ? 'pointer-events-none opacity-60' : undefined}
           />
 
@@ -545,12 +458,7 @@ export const LoadedEditor = memo(function LoadedEditor({
           >
             <InteractionLockRegion locked={isMaskEditingActive} className="h-full">
               <ErrorBoundary level="feature">
-                <div className="h-full flex overflow-hidden">
-                  <div className="min-w-0 flex-1">
-                    <Timeline duration={timelineDuration} />
-                  </div>
-                  <AudioMeterPanel />
-                </div>
+                <Timeline duration={timelineDuration} />
               </ErrorBoundary>
             </InteractionLockRegion>
           </ResizablePanel>
@@ -571,29 +479,9 @@ export const LoadedEditor = memo(function LoadedEditor({
         {exportDialogOpen && (
           <LazyExportDialog open={exportDialogOpen} onClose={() => setExportDialogOpen(false)} />
         )}
-
-        {/* Bundle Export Dialog */}
-        {bundleExportDialogOpen && (
-          <LazyBundleExportDialog
-            open={bundleExportDialogOpen}
-            onClose={() => {
-              setBundleExportDialogOpen(false)
-              setBundleFileHandle(undefined)
-            }}
-            projectId={projectId}
-            onBeforeExport={handleSave}
-            fileHandle={bundleFileHandle}
-          />
-        )}
       </Suspense>
 
       <EditorDialogHost projectId={projectId} />
-
-      {/* Bento Layout Preset Dialog */}
-      <BentoLayoutDialog />
-      <ReverseConformDialog />
-      <SilenceRemovalDialog />
-      <FillerRemovalDialog />
     </div>
   )
 })

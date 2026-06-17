@@ -83,9 +83,14 @@ import { getSharedProxyKey } from '../utils/proxy-key'
 import { mediaProcessorService } from './media-processor-service'
 import { generateThumbnail } from '../utils/thumbnail-generator'
 import {
-  needsCustomAudioDecoder,
-  startPreviewAudioConform,
-  startPreviewAudioStartupWarm,
+  // MatchView strip-down: preview-audio conform/warm is disabled. <video> plays
+  // audio natively for standard codecs; non-native codecs play silently —
+  // acceptable for match footage which is overwhelmingly H.264/AAC.
+  // (Imports commented to avoid unused-symbol TS errors while preserving
+  // the restoration path.)
+  // needsCustomAudioDecoder,
+  // startPreviewAudioConform,
+  // startPreviewAudioStartupWarm,
   deletePreviewAudioConform,
 } from '@/features/media-library/deps/composition-runtime'
 export { FileAccessError } from './file-access'
@@ -391,16 +396,19 @@ class MediaLibraryService {
       )
     }
 
-    if (needsCustomAudioDecoder(options.previewAudioCodec)) {
-      enqueueBackgroundMediaWork(() => startPreviewAudioStartupWarm(mediaMetadata.id, file), {
-        priority: 'warm',
-        delayMs: IMPORT_BACKGROUND_WARM_DELAY_MS,
-      })
-      enqueueBackgroundMediaWork(() => startPreviewAudioConform(mediaMetadata.id, file), {
-        priority: 'heavy',
-        delayMs: IMPORT_BACKGROUND_HEAVY_DELAY_MS,
-      })
-    }
+    // MatchView strip-down: preview-audio conform/warm is disabled. <video> plays
+    // audio natively for standard codecs; non-native codecs play silently —
+    // acceptable for match footage which is overwhelmingly H.264/AAC.
+    // if (needsCustomAudioDecoder(options.previewAudioCodec)) {
+    //   enqueueBackgroundMediaWork(() => startPreviewAudioStartupWarm(mediaMetadata.id, file), {
+    //     priority: 'warm',
+    //     delayMs: IMPORT_BACKGROUND_WARM_DELAY_MS,
+    //   })
+    //   enqueueBackgroundMediaWork(() => startPreviewAudioConform(mediaMetadata.id, file), {
+    //     priority: 'heavy',
+    //     delayMs: IMPORT_BACKGROUND_HEAVY_DELAY_MS,
+    //   })
+    // }
 
     if (mediaMetadata.mimeType === 'image/gif') {
       enqueueBackgroundMediaWork(

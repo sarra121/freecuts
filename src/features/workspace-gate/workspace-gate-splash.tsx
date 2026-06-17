@@ -1,7 +1,8 @@
 import { Trans, useTranslation } from 'react-i18next'
 import { FolderOpen, FolderX, Loader2, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { FreeCutLogo } from '@/components/brand/freecut-logo'
+import { MatchViewLogo } from '@/components/brand/matchview-logo'
+import { PitchBackdrop } from '@/components/brand/pitch-backdrop'
 
 type Status =
   | { kind: 'initializing' }
@@ -18,9 +19,10 @@ interface Props {
 export function WorkspaceGateSplash({ status, onPickFolder, onReconnect }: Props) {
   const { t } = useTranslation()
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center px-6">
-      <div className="max-w-lg w-full text-center">
-        <FreeCutLogo variant="full" size="lg" className="justify-center mb-8" />
+    <div className="relative min-h-screen overflow-hidden bg-background flex items-center justify-center px-6">
+      <PitchBackdrop />
+      <div className="relative z-10 max-w-lg w-full text-center">
+        <MatchViewLogo variant="full" size="lg" className="justify-center mb-8" />
 
         {status.kind === 'initializing' && (
           <div className="flex items-center justify-center gap-2 text-muted-foreground">
@@ -41,9 +43,9 @@ export function WorkspaceGateSplash({ status, onPickFolder, onReconnect }: Props
         )}
 
         {status.kind === 'pick' && (
-          <div className="space-y-5">
+          <div className="space-y-6">
             <div>
-              <h1 className="text-2xl font-semibold mb-2">
+              <h1 className="text-2xl font-semibold mb-3">
                 {t('projects.workspaceGate.pickTitle')}
               </h1>
               <p className="text-sm text-muted-foreground">
@@ -59,9 +61,9 @@ export function WorkspaceGateSplash({ status, onPickFolder, onReconnect }: Props
         )}
 
         {status.kind === 'reconnect' && (
-          <div className="space-y-5">
+          <div className="space-y-6">
             <div>
-              <h1 className="text-2xl font-semibold mb-2">
+              <h1 className="text-2xl font-semibold mb-3">
                 {t('projects.workspaceGate.reconnectTitle')}
               </h1>
               <p className="text-sm text-muted-foreground">

@@ -110,8 +110,8 @@ describe('generateTemplateName', () => {
 
 describe('PROJECT_TEMPLATES', () => {
   describe('structure validation', () => {
-    it('should have exactly 6 templates', () => {
-      expect(PROJECT_TEMPLATES).toHaveLength(6)
+    it('should have exactly 3 templates', () => {
+      expect(PROJECT_TEMPLATES).toHaveLength(3)
     })
 
     it('should have all required fields', () => {

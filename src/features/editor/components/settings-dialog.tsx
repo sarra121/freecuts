@@ -58,6 +58,7 @@ import {
 import { clearPreviewAudioCache } from '@/features/editor/deps/composition-runtime'
 import { createLogger } from '@/shared/logging/logger'
 import { cn } from '@/shared/ui/cn'
+import { useThemeStore } from '@/shared/state/theme-store'
 
 const log = createLogger('SettingsDialog')
 
@@ -361,6 +362,8 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   const captioningIntervalUnit = useSettingsStore((s) => s.captioningIntervalUnit)
   const captioningIntervalValue = useSettingsStore((s) => s.captioningIntervalValue)
   const setSetting = useSettingsStore((s) => s.setSetting)
+  const theme = useThemeStore((s) => s.theme)
+  const setTheme = useThemeStore((s) => s.setTheme)
   const resetToDefaults = useSettingsStore((s) => s.resetToDefaults)
 
   const intervalBounds = CAPTIONING_INTERVAL_BOUNDS[captioningIntervalUnit]
@@ -606,6 +609,28 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                         step={10}
                       />
                       <span className="text-xs text-muted-foreground w-6">{maxUndoHistory}</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <Label className="text-sm">{t('settings.general.theme')}</Label>
+                    <div className="flex items-center rounded-md border border-border bg-secondary p-0.5">
+                      {(['dark', 'light'] as const).map((mode) => (
+                        <button
+                          key={mode}
+                          type="button"
+                          onClick={() => setTheme(mode)}
+                          className={cn(
+                            'rounded px-2.5 py-1 text-xs transition-colors',
+                            theme === mode
+                              ? 'bg-primary/15 text-primary'
+                              : 'text-muted-foreground hover:text-foreground',
+                          )}
+                        >
+                          {mode === 'dark'
+                            ? t('settings.general.themeDark')
+                            : t('settings.general.themeLight')}
+                        </button>
+                      ))}
                     </div>
                   </div>
                 </div>

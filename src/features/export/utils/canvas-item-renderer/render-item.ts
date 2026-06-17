@@ -22,6 +22,7 @@ import {
   resolveCornerPinTargetRect,
 } from '@/features/export/deps/composition-runtime'
 import { resolveAnimatedTextItem } from '@/features/export/deps/keyframes'
+import { resolveShapeAtFrame } from '@/features/export/deps/shapes-konva'
 import type { EffectSourceMask } from '../canvas-effects'
 import { applyMasks } from '../canvas-masks'
 import { renderShape } from '../canvas-shapes'
@@ -162,10 +163,38 @@ async function renderItemContent(
       renderSubtitleSegmentItem(ctx, effectiveItem as SubtitleSegmentItem, transform, frame, rctx)
       break
     case 'shape':
-      renderShape(ctx, effectiveItem as ShapeItem, resolveItemTransform(transform), {
-        width: rctx.canvasSettings.width,
-        height: rctx.canvasSettings.height,
-      })
+      // MatchView: shape rendering is split by render mode.
+      //
+      // PREVIEW: the Konva `ShapesStage` overlay (mounted in
+      // `preview-stage.tsx:212` above this scrub canvas) is the sole
+      // authority for shape rendering. It applies the per-clip
+      // shape-keyframes change log (`useShapeKeyframesStore`) so the
+      // shape's position/style respects the timeline animation. Calling
+      // `renderShape` HERE in preview mode would draw a SECOND copy of
+      // each shape at its raw `item.transform`, which diverges from the
+      // Konva-rendered keyframe-resolved position any time the playhead
+      // isn't on the most-recently-recorded change. Symptom: "old
+      // position copy stays put while the new position moves." Skip.
+      //
+      // EXPORT: the export worker can't reach the main-thread Konva
+      // overlay or Zustand store, so canvas-2D is the only path. The
+      // per-clip shape-keyframes live on `item.keyframes`, which IS part
+      // of the serialized TimelineItem in the worker postMessage payload,
+      // so we resolve the shape at this frame here — exactly as the Konva
+      // overlay does in preview via `resolveShapeAtFrame`.
+      if (rctx.renderMode === 'preview') break
+      {
+        const shapeItem = effectiveItem as ShapeItem
+        const resolvedShape = resolveShapeAtFrame(shapeItem, frame - shapeItem.from)
+        renderShape(ctx, resolvedShape, resolveItemTransform(transform), {
+          width: rctx.canvasSettings.width,
+          height: rctx.canvasSettings.height,
+          frame,
+          fps: rctx.canvasSettings.fps,
+          // Preloaded picture for the image-overlay shape (keyed by item id).
+          imageSource: rctx.imageElements.get(shapeItem.id)?.source,
+        })
+      }
       break
     case 'composition':
       await renderCompositionItem(

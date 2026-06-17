@@ -14,4 +14,5 @@ export {
   useMediaDependencyStore,
   useCompositionsStore,
   useCompositionNavigationStore,
+  insertFreezeFrame,
 } from './timeline-contract'

@@ -382,7 +382,11 @@ export const TimelineTrack = memo(function TimelineTrack({ track }: TimelineTrac
           label: entry.label,
           mediaType: entry.mediaType,
           durationInFrames: getDroppedMediaDurationInFrames(entry.media, entry.mediaType, fps),
-          hasLinkedAudio: entry.mediaType === 'video' && !!entry.media.audioCodec,
+          // MatchView strip-down: video drops create only a video item; audio plays
+          // through the <video> element. The audio track is reserved for explicitly
+          // imported audio files. (Lines commented to preserve restoration path.)
+          // hasLinkedAudio: entry.mediaType === 'video' && !!entry.media.audioCodec,
+          hasLinkedAudio: false,
         })),
         dropFrame,
         tracks: useTimelineStore.getState().tracks,

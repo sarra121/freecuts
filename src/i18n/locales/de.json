@@ -73,7 +73,10 @@
       "autoSave": "Automatisches Speichern",
       "interval": "Intervall",
       "intervalMinutes": "{{count}} Min.",
-      "undoHistoryDepth": "Tiefe des Rückgängig-Verlaufs"
+      "undoHistoryDepth": "Tiefe des Rückgängig-Verlaufs",
+      "theme": "Design",
+      "themeDark": "Dunkel",
+      "themeLight": "Hell"
     },
     "ai": {
       "captionSampleInterval": "Untertitel-Abtastintervall",

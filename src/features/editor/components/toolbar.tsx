@@ -4,35 +4,20 @@ import { useTranslation } from 'react-i18next'
 import {
   ArrowLeft,
   Bug,
-  ChevronDown,
   Download,
-  FolderArchive,
-  Github,
   Keyboard,
   Save,
   Settings,
-  Sparkles,
-  Video,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Separator } from '@/components/ui/separator'
-import { LocalInferenceStatusPill } from './local-inference-status-pill'
 import { ProjectDebugPanel } from './project-debug-panel'
 import { SettingsDialog } from './settings-dialog'
 import { ShortcutsDialog } from './shortcuts-dialog'
 import { UnsavedChangesDialog } from './unsaved-changes-dialog'
-import { WhatsNewDialog } from './whats-new-dialog'
-import { hasUnseenChangelog } from './whats-new-seen'
 import { EDITOR_LAYOUT_CSS_VALUES } from '@/config/editor-layout'
 import { cn } from '@/shared/ui/cn'
-import { LanguageSwitcher } from '@/shared/ui/language-switcher'
 import { useDebugStore } from '@/features/editor/stores/debug-store'
 
 const SAVE_ANIMATION_MIN_MS = 1800
@@ -58,22 +43,16 @@ export const Toolbar = memo(function Toolbar({
   isDirty = false,
   onSave,
   onExport,
-  onExportBundle,
+  onExportBundle: _onExportBundle,
 }: ToolbarProps) {
   const navigate = useNavigate()
   const { t } = useTranslation()
   const [showUnsavedDialog, setShowUnsavedDialog] = useState(false)
   const [showShortcutsDialog, setShowShortcutsDialog] = useState(false)
   const [showSettingsDialog, setShowSettingsDialog] = useState(false)
-  const [showWhatsNewDialog, setShowWhatsNewDialog] = useState(false)
-  const [hasUnseenWhatsNew, setHasUnseenWhatsNew] = useState(false)
   const [isSaveAnimating, setIsSaveAnimating] = useState(false)
   const [saveAnimationKey, setSaveAnimationKey] = useState(0)
   const saveAnimationTimeoutRef = useRef<number | undefined>(undefined)
-
-  useEffect(() => {
-    setHasUnseenWhatsNew(hasUnseenChangelog())
-  }, [])
 
   useEffect(() => {
     return () => {
@@ -82,11 +61,6 @@ export const Toolbar = memo(function Toolbar({
       }
     }
   }, [])
-
-  const openWhatsNew = () => {
-    setHasUnseenWhatsNew(false)
-    setShowWhatsNewDialog(true)
-  }
 
   const handleBackClick = () => {
     if (isDirty) {
@@ -170,35 +144,14 @@ export const Toolbar = memo(function Toolbar({
 
       <div className="flex-1" />
 
-      <LocalInferenceStatusPill />
-
       <ShortcutsDialog open={showShortcutsDialog} onOpenChange={setShowShortcutsDialog} />
 
       <SettingsDialog open={showSettingsDialog} onOpenChange={setShowSettingsDialog} />
-
-      <WhatsNewDialog open={showWhatsNewDialog} onOpenChange={setShowWhatsNewDialog} />
 
       <div className="flex items-center gap-1.5">
         {import.meta.env.DEV && import.meta.env.VITE_SHOW_DEBUG_PANEL !== 'false' && (
           <DebugPopover projectId={projectId} />
         )}
-        <Button
-          variant="outline"
-          size="icon"
-          className="h-7 w-7 relative"
-          onClick={openWhatsNew}
-          data-tooltip={t('toolbar.whatsNew')}
-          data-tooltip-side="bottom"
-          aria-label={t('toolbar.whatsNewAria')}
-        >
-          <Sparkles className="h-4 w-4" />
-          {hasUnseenWhatsNew && (
-            <span
-              className="absolute top-1 right-1 h-1.5 w-1.5 rounded-full bg-primary"
-              aria-hidden="true"
-            />
-          )}
-        </Button>
         <Button
           variant="outline"
           size="icon"
@@ -221,19 +174,6 @@ export const Toolbar = memo(function Toolbar({
         >
           <Keyboard className="h-4 w-4" />
         </Button>
-        <LanguageSwitcher size="sm" align="end" side="bottom" />
-        <Button variant="outline" size="icon" className="h-7 w-7" asChild>
-          <a
-            href="https://github.com/walterlow/freecut"
-            target="_blank"
-            rel="noopener noreferrer"
-            data-tooltip={t('toolbar.viewOnGitHub')}
-            data-tooltip-side="bottom"
-            aria-label={t('toolbar.viewOnGitHub')}
-          >
-            <Github className="h-4 w-4" />
-          </a>
-        </Button>
         <Button
           variant="outline"
           size="sm"
@@ -254,25 +194,10 @@ export const Toolbar = memo(function Toolbar({
           {t('toolbar.save')}
         </Button>
 
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button size="sm" className="gap-1.5 glow-primary-sm">
-              <Download className="h-4 w-4" />
-              {t('toolbar.export')}
-              <ChevronDown className="h-3 w-3" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={onExport} className="gap-2">
-              <Video className="h-4 w-4" />
-              {t('toolbar.exportVideo')}
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={onExportBundle} className="gap-2">
-              <FolderArchive className="h-4 w-4" />
-              {t('toolbar.downloadProjectZip')}
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <Button size="sm" className="gap-1.5 glow-primary-sm" onClick={onExport}>
+          <Download className="h-4 w-4" />
+          {t('toolbar.exportVideo')}
+        </Button>
       </div>
     </div>
   )

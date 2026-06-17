@@ -232,6 +232,143 @@ export type ShapeType =
   | 'polygon'
   | 'heart'
   | 'path'
+  // MatchView additions — see docs/superpowers/specs/2026-05-24-konva-shape-renderer-design.md
+  | 'arrow'
+  | 'free-polygon'
+  // Field-level player ring — see docs/superpowers/specs/2026-06-04-field-ring-shape-design.md
+  | 'field-ring'
+  // Connected group of field rings (loop/chain of player rings with links).
+  | 'connected-rings'
+  // Player spotlight — light beam + ground pool + soft figure cutout.
+  | 'spotlight'
+  // Editable on-canvas text label (Konva).
+  | 'text'
+  // Timeline-synced match clock / drill countdown.
+  | 'timer'
+  // Image overlay (logo / headshot / marker) — skewable, opacity-adjustable.
+  | 'image'
+
+/** Free-form arrow with two endpoints + parametric pointer head.
+ *  Used when `shapeType === 'arrow'`. Coordinates are item-local
+ *  (relative to ShapeItem.x / y). */
+export interface ArrowData {
+  fromX: number
+  fromY: number
+  toX: number
+  toY: number
+  pointerLength?: number // default 16
+  pointerWidth?: number // default 16
+  dash?: 'solid' | 'dashed' | 'dotted' // default 'solid'
+  // v1 breadcrumb — reserved for the curved-arrow variant. Undefined in
+  // v0 = straight arrow; setting these promotes the arrow to curved
+  // without a project-data migration.
+  controlX?: number
+  controlY?: number
+}
+
+/** Free-form polygon vertices. Used when `shapeType === 'free-polygon'`.
+ *  Distinct from the existing `ShapeItem.points` number field (which is
+ *  the SIDES COUNT for the parametric regular-polygon N-gon). */
+export interface FreePolygonData {
+  /** Flat [x0, y0, x1, y1, …] in item-local coordinates. */
+  vertices: number[]
+  closed: boolean
+}
+
+/** Field-level ring under a player. Used when shapeType === 'field-ring'.
+ *  The ellipse bounding box comes from ShapeItem.transform: radiusX =
+ *  transform.width / 2, radiusY = radiusX * squash. Band color = fillColor. */
+export interface FieldRingData {
+  squash: number // 0.12–1   radiusY / radiusX (low = flat field ring)
+  bandThickness: number // px band/stroke weight
+  segments: number // chopped segment count (default 6)
+  continuous: boolean // true = unbroken band (segments/gap ignored)
+  gapRatio: number // 0–0.8   gap fraction between segments
+  roundedEnds: boolean // round vs square (butt) segment caps
+  extrusionHeight: number // px  0 = flat 2D
+  spin: boolean
+  spinSpeed: number // revolutions/sec, signed (sign = direction)
+  contactShadow: boolean
+}
+
+/** Connected group of field rings. Used when shapeType === 'connected-rings'.
+ *  Node positions + open/closed reuse `freePolygonData` (vertices are absolute
+ *  canvas-pixel coords, like free-polygon). This holds the shared ring look,
+ *  the node radius, and the connector (link) styling. */
+export interface ConnectedRingsData {
+  nodeRadius: number // shared radiusX of every ring (px); radiusY = nodeRadius * ring.squash
+  ring: FieldRingData // shared appearance applied to every node ring
+  connectorColor: string
+  connectorWidth: number
+}
+
+/** Player spotlight. Used when shapeType === 'spotlight'. A vertical light
+ *  beam landing on a ground pool, with a soft "figure" cutout so the player
+ *  shows through. Position/size come from ShapeItem.transform (beam width =
+ *  transform.width, height = transform.height); light colour = fillColor. */
+export interface SpotlightData {
+  intensity: number // 0–1 master alpha for the beam + pool
+  pool: boolean // show the ground pool ellipse
+  bloom: boolean // show the bright bloom where the beam meets the ground
+  cutout: boolean // punch the soft figure cutout so the player shows through
+  cutoutWidth: number // px width of the cutout figure
+  cutoutHeight: number // px height of the cutout figure (head→feet)
+}
+
+/** Editable on-canvas text label. Used when shapeType === 'text'. Content +
+ *  font live here; colour = fillColor; wrap width = transform.width. Distinct
+ *  from the top-level TextItem (type: 'text') used by the composition. */
+export interface TextShapeData {
+  content: string
+  fontSize: number
+  fontFamily: string
+  align: 'left' | 'center' | 'right'
+  /** Affine shear (degrees) so the label can lie on the pitch. Vector — text
+   *  stays crisp/editable; no rasterization. */
+  skewX: number
+  skewY: number
+}
+
+/** Timeline-synced timer. Used when shapeType === 'timer'. The displayed time
+ *  is a pure function of the playhead frame:
+ *   - 'up'   (match clock): offsetSec + elapsed
+ *   - 'down' (drill):       max(0, durationSec - elapsed)
+ *  where elapsed = (currentFrame - item.from) / fps. Colour = fillColor. */
+export interface TimerData {
+  mode: 'up' | 'down'
+  offsetSec: number // 'up' start value (real match time at clip start)
+  durationSec: number // 'down' countdown start
+  format: 'hh:mm:ss' | 'mm:ss' | 'mm:ss:cc' | 'ss:cc' | 'ss'
+  fontSize: number
+  fontFamily: string
+}
+
+/** Image overlay. Used when shapeType === 'image'. The picture is sourced from
+ *  a media-library entry (`mediaId` is the source of truth; the renderer resolves
+ *  it to a URL), so nothing ephemeral is persisted in the project. Size/position
+ *  come from ShapeItem.transform and opacity from transform.opacity; skew lets
+ *  the image lie on the pitch with perspective (mirrors TextShapeData). */
+export interface ImageShapeData {
+  mediaId: string
+  /** Intrinsic pixel size — for aspect-correct default sizing. */
+  naturalWidth: number
+  naturalHeight: number
+  /** Affine shear (degrees). Vector skew applied by the renderer as a factor. */
+  skewX: number
+  skewY: number
+  /** Ephemeral resolved object URL (set by resolveMediaUrls for the render
+   *  pipelines; never the source of truth — `mediaId` is). Used by the export
+   *  worker to preload the image since it can't reach the media store. */
+  src?: string
+}
+
+/** One recorded change for a shape clip: at clip-relative `frame`, apply
+ *  `patch` (any subset of the shape's fields). Step playback — no interpolation.
+ *  Resolved on top of the base item by resolveShapeAtFrame. */
+export interface ShapeKeyframe {
+  frame: number
+  patch: Partial<ShapeItem>
+}
 
 export type ShapeItem = BaseTimelineItem & {
   type: 'shape'
@@ -248,6 +385,25 @@ export type ShapeItem = BaseTimelineItem & {
   innerRadius?: number // Star only (ratio 0-1 of outer)
   // Path shape (custom bezier path drawn with pen tool)
   pathVertices?: import('@/types/masks').MaskVertex[] // Normalized 0-1 vertices for 'path' shapeType
+  // MatchView additions — used by `shapeType: 'arrow'` and `shapeType: 'free-polygon'` respectively.
+  arrowData?: ArrowData
+  freePolygonData?: FreePolygonData
+  // Field-ring config — used when shapeType === 'field-ring'.
+  fieldRingData?: FieldRingData
+  // Connected-rings config — used when shapeType === 'connected-rings'.
+  // (node positions + closed live in freePolygonData, reused.)
+  connectedRingsData?: ConnectedRingsData
+  // Spotlight config — used when shapeType === 'spotlight'.
+  spotlightData?: SpotlightData
+  // Text-label config — used when shapeType === 'text'.
+  textShapeData?: TextShapeData
+  // Timer config — used when shapeType === 'timer'.
+  timerData?: TimerData
+  // Image-overlay config — used when shapeType === 'image'.
+  imageShapeData?: ImageShapeData
+  // Change registry for this clip (frame-relative). Resolved on top of the
+  // base item by resolveShapeAtFrame. Optional → old projects have none.
+  keyframes?: ShapeKeyframe[]
   // Mask properties
   isMask?: boolean // When true, shape acts as mask for lower tracks
   maskType?: 'clip' | 'alpha' // clip = hard edges, alpha = soft edges
@@ -370,7 +526,12 @@ export type TimelineItem =
 export interface TimelineTrack {
   id: string
   name: string
-  kind?: 'video' | 'audio'
+  // 'shape' is a MatchView addition — annotation overlay tracks that host
+  // ShapeItem clips. From the user's perspective, tracks fall into two
+  // surfaces: "media" (video/audio) and "shapes". Existing code that
+  // checks kind === 'video' / kind === 'audio' is unaffected; shape
+  // tracks are treated as neither.
+  kind?: 'video' | 'audio' | 'shape'
   height: number
   locked: boolean
   syncLock?: boolean // Defaults to true - controls whether ripple edits propagate to this track

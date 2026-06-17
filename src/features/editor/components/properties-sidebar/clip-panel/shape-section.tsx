@@ -32,6 +32,7 @@ const SHAPE_TYPE_OPTIONS: { value: ShapeType; labelKey: string }[] = [
   { value: 'star', labelKey: 'editor.shapeSection.typeStar' },
   { value: 'polygon', labelKey: 'editor.shapeSection.typePolygon' },
   { value: 'heart', labelKey: 'editor.shapeSection.typeHeart' },
+  { value: 'field-ring', labelKey: 'editor.shapeSection.typeFieldRing' },
 ]
 
 // Triangle direction options
@@ -117,13 +118,31 @@ export function ShapeSection({ items }: ShapeSectionProps) {
     }
   }, [shapeItems])
 
-  // Check which controls should be shown based on shape type
+  // Field-ring config is edited one item at a time (v1).
+  const singleFieldRing =
+    shapeItems.length === 1 && shapeItems[0]?.shapeType === 'field-ring' ? shapeItems[0] : null
+  const fr = singleFieldRing?.fieldRingData
+
+  // Connected-rings config is also edited one item at a time.
+  const singleConnectedRings =
+    shapeItems.length === 1 && shapeItems[0]?.shapeType === 'connected-rings'
+      ? shapeItems[0]
+      : null
+  const cr = singleConnectedRings?.connectedRingsData
+  const crPoly = singleConnectedRings?.freePolygonData
+
+  // Check which controls should be shown based on shape type. The field-ring
+  // has its own dedicated controls, so the generic ones are suppressed for it.
   const showCornerRadius =
+    !singleFieldRing &&
     sharedValues?.shapeType &&
     ['rectangle', 'triangle', 'star', 'polygon'].includes(sharedValues.shapeType)
-  const showDirection = sharedValues?.shapeType === 'triangle'
-  const showPoints = sharedValues?.shapeType && ['star', 'polygon'].includes(sharedValues.shapeType)
-  const showInnerRadius = sharedValues?.shapeType === 'star'
+  const showDirection = !singleFieldRing && sharedValues?.shapeType === 'triangle'
+  const showPoints =
+    !singleFieldRing &&
+    sharedValues?.shapeType &&
+    ['star', 'polygon'].includes(sharedValues.shapeType)
+  const showInnerRadius = !singleFieldRing && sharedValues?.shapeType === 'star'
   const singlePathShape =
     shapeItems.length === 1 && shapeItems[0]?.shapeType === 'path' ? shapeItems[0] : null
   const isEditingPathShape =
@@ -138,6 +157,55 @@ export function ShapeSection({ items }: ShapeSectionProps) {
     },
     [shapeItems, updateItem],
   )
+
+  // Patch fieldRingData on the single selected field ring. Commits directly
+  // (used for both live-drag and change) because shapes-konva renders from
+  // the timeline store, not the gizmo preview.
+  const updateFieldRing = useCallback(
+    (patch: Partial<NonNullable<ShapeItem['fieldRingData']>>) => {
+      if (!singleFieldRing) return
+      updateItem(singleFieldRing.id, {
+        fieldRingData: { ...singleFieldRing.fieldRingData!, ...patch },
+      })
+    },
+    [singleFieldRing, updateItem],
+  )
+
+  // Patch connectedRingsData (nodeRadius / connector style) on the selected group.
+  const updateConnected = useCallback(
+    (patch: Partial<NonNullable<ShapeItem['connectedRingsData']>>) => {
+      if (!singleConnectedRings) return
+      updateItem(singleConnectedRings.id, {
+        connectedRingsData: { ...singleConnectedRings.connectedRingsData!, ...patch },
+      })
+    },
+    [singleConnectedRings, updateItem],
+  )
+
+  // Patch the shared ring appearance (connectedRingsData.ring).
+  const updateConnectedRing = useCallback(
+    (patch: Partial<NonNullable<ShapeItem['fieldRingData']>>) => {
+      if (!singleConnectedRings?.connectedRingsData) return
+      updateItem(singleConnectedRings.id, {
+        connectedRingsData: {
+          ...singleConnectedRings.connectedRingsData,
+          ring: { ...singleConnectedRings.connectedRingsData.ring, ...patch },
+        },
+      })
+    },
+    [singleConnectedRings, updateItem],
+  )
+
+  // Toggle open/closed (stored in freePolygonData, reused).
+  const toggleConnectedClosed = useCallback(() => {
+    if (!singleConnectedRings?.freePolygonData) return
+    updateItem(singleConnectedRings.id, {
+      freePolygonData: {
+        ...singleConnectedRings.freePolygonData,
+        closed: !singleConnectedRings.freePolygonData.closed,
+      },
+    })
+  }, [singleConnectedRings, updateItem])
 
   // Shape type change - also update label to match shape type
   const handleShapeTypeChange = useCallback(
@@ -379,6 +447,313 @@ export function ShapeSection({ items }: ShapeSectionProps) {
         </Select>
       </PropertyRow>
 
+      {singleFieldRing && fr && (
+        <>
+          <ColorPicker
+            label={t('editor.shapeSection.fill')}
+            color={singleFieldRing.fillColor ?? '#2f97ff'}
+            onChange={(v) => updateShapeItems({ fillColor: v })}
+            onLiveChange={(v) => updateShapeItems({ fillColor: v })}
+            onReset={() => updateShapeItems({ fillColor: '#2f97ff' })}
+            defaultColor="#2f97ff"
+          />
+
+          <PropertyRow label={t('editor.shapeSection.squash')}>
+            <SliderInput
+              value={fr.squash}
+              onChange={(v) => updateFieldRing({ squash: v })}
+              onLiveChange={(v) => updateFieldRing({ squash: v })}
+              min={0.12}
+              max={1}
+              step={0.01}
+              className="flex-1 min-w-0"
+            />
+          </PropertyRow>
+
+          <PropertyRow label={t('editor.shapeSection.bandThickness')}>
+            <SliderInput
+              value={fr.bandThickness}
+              onChange={(v) => updateFieldRing({ bandThickness: v })}
+              onLiveChange={(v) => updateFieldRing({ bandThickness: v })}
+              min={2}
+              max={60}
+              step={1}
+              unit="px"
+              className="flex-1 min-w-0"
+            />
+          </PropertyRow>
+
+          <PropertyRow label={t('editor.shapeSection.extrusionHeight')}>
+            <SliderInput
+              value={fr.extrusionHeight}
+              onChange={(v) => updateFieldRing({ extrusionHeight: v })}
+              onLiveChange={(v) => updateFieldRing({ extrusionHeight: v })}
+              min={0}
+              max={30}
+              step={1}
+              unit="px"
+              className="flex-1 min-w-0"
+            />
+          </PropertyRow>
+
+          <PropertyRow label={t('editor.shapeSection.continuous')}>
+            <Button
+              variant={fr.continuous ? 'secondary' : 'ghost'}
+              size="sm"
+              className="h-7 text-xs flex-1 min-w-0"
+              onClick={() => updateFieldRing({ continuous: !fr.continuous })}
+            >
+              {fr.continuous ? t('editor.shapeSection.on') : t('editor.shapeSection.off')}
+            </Button>
+          </PropertyRow>
+
+          {!fr.continuous && (
+            <>
+              <PropertyRow label={t('editor.shapeSection.segments')}>
+                <NumberInput
+                  value={fr.segments}
+                  onChange={(v) => updateFieldRing({ segments: v })}
+                  onLiveChange={(v) => updateFieldRing({ segments: v })}
+                  min={2}
+                  max={48}
+                  step={1}
+                  className="flex-1 min-w-0"
+                />
+              </PropertyRow>
+
+              <PropertyRow label={t('editor.shapeSection.gap')}>
+                <SliderInput
+                  value={fr.gapRatio}
+                  onChange={(v) => updateFieldRing({ gapRatio: v })}
+                  onLiveChange={(v) => updateFieldRing({ gapRatio: v })}
+                  min={0}
+                  max={0.8}
+                  step={0.01}
+                  className="flex-1 min-w-0"
+                />
+              </PropertyRow>
+
+              <PropertyRow label={t('editor.shapeSection.roundedEnds')}>
+                <Button
+                  variant={fr.roundedEnds ? 'secondary' : 'ghost'}
+                  size="sm"
+                  className="h-7 text-xs flex-1 min-w-0"
+                  onClick={() => updateFieldRing({ roundedEnds: !fr.roundedEnds })}
+                >
+                  {fr.roundedEnds ? t('editor.shapeSection.on') : t('editor.shapeSection.off')}
+                </Button>
+              </PropertyRow>
+            </>
+          )}
+
+          <PropertyRow label={t('editor.shapeSection.spin')}>
+            <Button
+              variant={fr.spin ? 'secondary' : 'ghost'}
+              size="sm"
+              className="h-7 text-xs flex-1 min-w-0"
+              onClick={() => updateFieldRing({ spin: !fr.spin })}
+            >
+              {fr.spin ? t('editor.shapeSection.on') : t('editor.shapeSection.off')}
+            </Button>
+          </PropertyRow>
+
+          {fr.spin && (
+            <PropertyRow label={t('editor.shapeSection.spinSpeed')}>
+              <SliderInput
+                value={fr.spinSpeed}
+                onChange={(v) => updateFieldRing({ spinSpeed: v })}
+                onLiveChange={(v) => updateFieldRing({ spinSpeed: v })}
+                min={-2}
+                max={2}
+                step={0.05}
+                className="flex-1 min-w-0"
+              />
+            </PropertyRow>
+          )}
+
+          <PropertyRow label={t('editor.shapeSection.contactShadow')}>
+            <Button
+              variant={fr.contactShadow ? 'secondary' : 'ghost'}
+              size="sm"
+              className="h-7 text-xs flex-1 min-w-0"
+              onClick={() => updateFieldRing({ contactShadow: !fr.contactShadow })}
+            >
+              {fr.contactShadow ? t('editor.shapeSection.on') : t('editor.shapeSection.off')}
+            </Button>
+          </PropertyRow>
+        </>
+      )}
+
+      {singleConnectedRings && cr && crPoly && (
+        <>
+          <ColorPicker
+            label={t('editor.shapeSection.fill')}
+            color={singleConnectedRings.fillColor ?? '#2f97ff'}
+            onChange={(v) => updateShapeItems({ fillColor: v })}
+            onLiveChange={(v) => updateShapeItems({ fillColor: v })}
+            onReset={() => updateShapeItems({ fillColor: '#2f97ff' })}
+            defaultColor="#2f97ff"
+          />
+
+          <ColorPicker
+            label={t('editor.shapeSection.connectorColor')}
+            color={cr.connectorColor}
+            onChange={(v) => updateConnected({ connectorColor: v })}
+            onLiveChange={(v) => updateConnected({ connectorColor: v })}
+            onReset={() => updateConnected({ connectorColor: '#2f97ff' })}
+            defaultColor="#2f97ff"
+          />
+
+          <PropertyRow label={t('editor.shapeSection.connectorWidth')}>
+            <SliderInput
+              value={cr.connectorWidth}
+              onChange={(v) => updateConnected({ connectorWidth: v })}
+              onLiveChange={(v) => updateConnected({ connectorWidth: v })}
+              min={1}
+              max={30}
+              step={1}
+              unit="px"
+              className="flex-1 min-w-0"
+            />
+          </PropertyRow>
+
+          <PropertyRow label={t('editor.shapeSection.closed')}>
+            <Button
+              variant={crPoly.closed ? 'secondary' : 'ghost'}
+              size="sm"
+              className="h-7 text-xs flex-1 min-w-0"
+              onClick={toggleConnectedClosed}
+            >
+              {crPoly.closed ? t('editor.shapeSection.on') : t('editor.shapeSection.off')}
+            </Button>
+          </PropertyRow>
+
+          <PropertyRow label={t('editor.shapeSection.nodeRadius')}>
+            <SliderInput
+              value={cr.nodeRadius}
+              onChange={(v) => updateConnected({ nodeRadius: v })}
+              onLiveChange={(v) => updateConnected({ nodeRadius: v })}
+              min={20}
+              max={200}
+              step={1}
+              unit="px"
+              className="flex-1 min-w-0"
+            />
+          </PropertyRow>
+
+          <PropertyRow label={t('editor.shapeSection.squash')}>
+            <SliderInput
+              value={cr.ring.squash}
+              onChange={(v) => updateConnectedRing({ squash: v })}
+              onLiveChange={(v) => updateConnectedRing({ squash: v })}
+              min={0.12}
+              max={1}
+              step={0.01}
+              className="flex-1 min-w-0"
+            />
+          </PropertyRow>
+
+          <PropertyRow label={t('editor.shapeSection.bandThickness')}>
+            <SliderInput
+              value={cr.ring.bandThickness}
+              onChange={(v) => updateConnectedRing({ bandThickness: v })}
+              onLiveChange={(v) => updateConnectedRing({ bandThickness: v })}
+              min={2}
+              max={60}
+              step={1}
+              unit="px"
+              className="flex-1 min-w-0"
+            />
+          </PropertyRow>
+
+          <PropertyRow label={t('editor.shapeSection.continuous')}>
+            <Button
+              variant={cr.ring.continuous ? 'secondary' : 'ghost'}
+              size="sm"
+              className="h-7 text-xs flex-1 min-w-0"
+              onClick={() => updateConnectedRing({ continuous: !cr.ring.continuous })}
+            >
+              {cr.ring.continuous ? t('editor.shapeSection.on') : t('editor.shapeSection.off')}
+            </Button>
+          </PropertyRow>
+
+          {!cr.ring.continuous && (
+            <>
+              <PropertyRow label={t('editor.shapeSection.segments')}>
+                <NumberInput
+                  value={cr.ring.segments}
+                  onChange={(v) => updateConnectedRing({ segments: v })}
+                  onLiveChange={(v) => updateConnectedRing({ segments: v })}
+                  min={2}
+                  max={48}
+                  step={1}
+                  className="flex-1 min-w-0"
+                />
+              </PropertyRow>
+
+              <PropertyRow label={t('editor.shapeSection.gap')}>
+                <SliderInput
+                  value={cr.ring.gapRatio}
+                  onChange={(v) => updateConnectedRing({ gapRatio: v })}
+                  onLiveChange={(v) => updateConnectedRing({ gapRatio: v })}
+                  min={0}
+                  max={0.8}
+                  step={0.01}
+                  className="flex-1 min-w-0"
+                />
+              </PropertyRow>
+
+              <PropertyRow label={t('editor.shapeSection.roundedEnds')}>
+                <Button
+                  variant={cr.ring.roundedEnds ? 'secondary' : 'ghost'}
+                  size="sm"
+                  className="h-7 text-xs flex-1 min-w-0"
+                  onClick={() => updateConnectedRing({ roundedEnds: !cr.ring.roundedEnds })}
+                >
+                  {cr.ring.roundedEnds ? t('editor.shapeSection.on') : t('editor.shapeSection.off')}
+                </Button>
+              </PropertyRow>
+            </>
+          )}
+
+          <PropertyRow label={t('editor.shapeSection.spin')}>
+            <Button
+              variant={cr.ring.spin ? 'secondary' : 'ghost'}
+              size="sm"
+              className="h-7 text-xs flex-1 min-w-0"
+              onClick={() => updateConnectedRing({ spin: !cr.ring.spin })}
+            >
+              {cr.ring.spin ? t('editor.shapeSection.on') : t('editor.shapeSection.off')}
+            </Button>
+          </PropertyRow>
+
+          {cr.ring.spin && (
+            <PropertyRow label={t('editor.shapeSection.spinSpeed')}>
+              <SliderInput
+                value={cr.ring.spinSpeed}
+                onChange={(v) => updateConnectedRing({ spinSpeed: v })}
+                onLiveChange={(v) => updateConnectedRing({ spinSpeed: v })}
+                min={-2}
+                max={2}
+                step={0.05}
+                className="flex-1 min-w-0"
+              />
+            </PropertyRow>
+          )}
+
+          <PropertyRow label={t('editor.shapeSection.contactShadow')}>
+            <Button
+              variant={cr.ring.contactShadow ? 'secondary' : 'ghost'}
+              size="sm"
+              className="h-7 text-xs flex-1 min-w-0"
+              onClick={() => updateConnectedRing({ contactShadow: !cr.ring.contactShadow })}
+            >
+              {cr.ring.contactShadow ? t('editor.shapeSection.on') : t('editor.shapeSection.off')}
+            </Button>
+          </PropertyRow>
+        </>
+      )}
+
       {singlePathShape && (
         <PropertyRow label={t('editor.shapeSection.path')}>
           <div className="flex items-center gap-2 w-full">
@@ -404,40 +779,46 @@ export function ShapeSection({ items }: ShapeSectionProps) {
         </PropertyRow>
       )}
 
-      {/* Fill Color */}
-      <ColorPicker
-        label={t('editor.shapeSection.fill')}
-        color={sharedValues.fillColor ?? '#3b82f6'}
-        onChange={handleFillColorChange}
-        onLiveChange={handleFillColorLiveChange}
-        onReset={() => handleFillColorChange('#3b82f6')}
-        defaultColor="#3b82f6"
-      />
+      {/* Generic fill + stroke — suppressed for field-ring / connected-rings
+          (they have their own dedicated controls). */}
+      {!singleFieldRing && !singleConnectedRings && (
+        <>
+          {/* Fill Color */}
+          <ColorPicker
+            label={t('editor.shapeSection.fill')}
+            color={sharedValues.fillColor ?? '#3b82f6'}
+            onChange={handleFillColorChange}
+            onLiveChange={handleFillColorLiveChange}
+            onReset={() => handleFillColorChange('#3b82f6')}
+            defaultColor="#3b82f6"
+          />
 
-      {/* Stroke Width */}
-      <PropertyRow label={t('editor.shapeSection.strokeWidth')}>
-        <NumberInput
-          value={sharedValues.strokeWidth}
-          onChange={handleStrokeWidthChange}
-          onLiveChange={handleStrokeWidthLiveChange}
-          min={0}
-          max={50}
-          step={1}
-          unit="px"
-          className="flex-1 min-w-0"
-        />
-      </PropertyRow>
+          {/* Stroke Width */}
+          <PropertyRow label={t('editor.shapeSection.strokeWidth')}>
+            <NumberInput
+              value={sharedValues.strokeWidth}
+              onChange={handleStrokeWidthChange}
+              onLiveChange={handleStrokeWidthLiveChange}
+              min={0}
+              max={50}
+              step={1}
+              unit="px"
+              className="flex-1 min-w-0"
+            />
+          </PropertyRow>
 
-      {/* Stroke Color - only show when stroke width > 0 */}
-      {(sharedValues.strokeWidth === 'mixed' || sharedValues.strokeWidth > 0) && (
-        <ColorPicker
-          label={t('editor.shapeSection.stroke')}
-          color={sharedValues.strokeColor || '#1e40af'}
-          onChange={handleStrokeColorChange}
-          onLiveChange={handleStrokeColorLiveChange}
-          onReset={() => handleStrokeColorChange('')}
-          defaultColor=""
-        />
+          {/* Stroke Color - only show when stroke width > 0 */}
+          {(sharedValues.strokeWidth === 'mixed' || sharedValues.strokeWidth > 0) && (
+            <ColorPicker
+              label={t('editor.shapeSection.stroke')}
+              color={sharedValues.strokeColor || '#1e40af'}
+              onChange={handleStrokeColorChange}
+              onLiveChange={handleStrokeColorLiveChange}
+              onReset={() => handleStrokeColorChange('')}
+              defaultColor=""
+            />
+          )}
+        </>
       )}
 
       {/* Corner Radius - shown for rectangle, triangle, star, polygon */}

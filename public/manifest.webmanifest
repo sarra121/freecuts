@@ -1,13 +1,13 @@
 {
-  "name": "FreeCut",
-  "short_name": "FreeCut",
+  "name": "MatchView",
+  "short_name": "MatchView",
   "id": "/",
-  "description": "A browser-based video editor.",
+  "description": "A browser-based sports analysis video editor.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "background_color": "#111827",
-  "theme_color": "#111827",
+  "background_color": "#1e1e1e",
+  "theme_color": "#1e1e1e",
   "orientation": "any",
   "categories": ["video", "productivity", "utilities"],
   "icons": [
@@ -36,7 +36,7 @@
       "sizes": "2048x1536",
       "type": "image/png",
       "form_factor": "wide",
-      "label": "FreeCut video editor timeline"
+      "label": "MatchView video editor timeline"
     }
   ]
 }

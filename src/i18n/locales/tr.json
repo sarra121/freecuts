@@ -73,7 +73,10 @@
       "autoSave": "Otomatik kaydet",
       "interval": "Aralık",
       "intervalMinutes": "{{count}} dk",
-      "undoHistoryDepth": "Geri Alma Geçmişi Derinliği"
+      "undoHistoryDepth": "Geri Alma Geçmişi Derinliği",
+      "theme": "Tema",
+      "themeDark": "Koyu",
+      "themeLight": "Açık"
     },
     "ai": {
       "captionSampleInterval": "Altyazı örnekleme aralığı",

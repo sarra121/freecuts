@@ -13,7 +13,6 @@ import {
   Info,
   X,
   FolderOpen,
-  Link,
   Link2Off,
   ChevronRight,
   Film,
@@ -25,10 +24,8 @@ import {
   Upload,
   Sparkles,
   FileText,
-  ScanSearch,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { SceneBrowserPanel, useSceneBrowserStore } from '../deps/scene-browser'
 import { createLogger } from '@/shared/logging/logger'
 
 const logger = createLogger('MediaLibrary')
@@ -52,14 +49,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { MarqueeOverlay } from '@/shared/marquee/marquee-overlay'
@@ -219,15 +208,11 @@ export const MediaLibrary = memo(function MediaLibrary({ onMediaSelect }: MediaL
     () => new Set(['video', 'audio', 'image', 'gif']),
   )
   const [isDragging, setIsDragging] = useState(false)
-  const [showImportUrlDialog, setShowImportUrlDialog] = useState(false)
-  const [importUrlValue, setImportUrlValue] = useState('')
-  const [isImportUrlSubmitting, setIsImportUrlSubmitting] = useState(false)
   // Store selectors
   const currentProjectId = useMediaLibraryStore((s) => s.currentProjectId)
   const setCurrentProject = useMediaLibraryStore((s) => s.setCurrentProject)
   const loadMediaItems = useMediaLibraryStore((s) => s.loadMediaItems)
   const importMedia = useMediaLibraryStore((s) => s.importMedia)
-  const importMediaFromUrl = useMediaLibraryStore((s) => s.importMediaFromUrl)
   const importHandles = useMediaLibraryStore((s) => s.importHandles)
   const deleteMediaBatch = useMediaLibraryStore((s) => s.deleteMediaBatch)
   const showNotification = useMediaLibraryStore((s) => s.showNotification)
@@ -239,9 +224,6 @@ export const MediaLibrary = memo(function MediaLibrary({ onMediaSelect }: MediaL
   const setSortBy = useMediaLibraryStore((s) => s.setSortBy)
   const viewMode = useMediaLibraryStore((s) => s.viewMode)
   const setViewMode = useMediaLibraryStore((s) => s.setViewMode)
-  const sceneBrowserOpen = useSceneBrowserStore((s) => s.open)
-  const openSceneBrowser = useSceneBrowserStore((s) => s.openBrowser)
-  const closeSceneBrowser = useSceneBrowserStore((s) => s.closeBrowser)
   const mediaItemSize = useMediaLibraryStore((s) => s.mediaItemSize)
   const setMediaItemSize = useMediaLibraryStore((s) => s.setMediaItemSize)
   const selectedMediaIds = useMediaLibraryStore((s) => s.selectedMediaIds)
@@ -510,29 +492,6 @@ export const MediaLibrary = memo(function MediaLibrary({ onMediaSelect }: MediaL
       logger.error('Import failed:', error)
     }
   }
-
-  const handleImportUrl = useCallback(
-    async (event: React.FormEvent<HTMLFormElement>) => {
-      event.preventDefault()
-      if (isImportUrlSubmitting) {
-        return
-      }
-
-      setIsImportUrlSubmitting(true)
-      try {
-        await importMediaFromUrl(importUrlValue)
-        if (!useMediaLibraryStore.getState().error) {
-          setShowImportUrlDialog(false)
-          setImportUrlValue('')
-        }
-      } catch (error) {
-        logger.error('Import from URL failed:', error)
-      } finally {
-        setIsImportUrlSubmitting(false)
-      }
-    },
-    [importMediaFromUrl, importUrlValue, isImportUrlSubmitting],
-  )
 
   // Import files from drag-drop handles - memoized to prevent MediaGrid re-renders
   const handleImportHandles = useCallback(
@@ -904,23 +863,6 @@ export const MediaLibrary = memo(function MediaLibrary({ onMediaSelect }: MediaL
               </button>
             </HeaderActionTooltip>
 
-            <HeaderActionTooltip label={t('media.library.importMediaFromUrl')}>
-              <button
-                onClick={() => setShowImportUrlDialog(true)}
-                disabled={!currentProjectId}
-                className="flex items-center gap-1.5 h-7 px-2.5 rounded-md shrink-0 border
-                  bg-secondary border-border text-muted-foreground
-                  hover:text-primary hover:bg-primary/10 hover:border-primary/40
-                  disabled:opacity-40 disabled:cursor-not-allowed
-                  transition-colors duration-150"
-              >
-                <Link className="w-3.5 h-3.5" />
-                <span className={headerCompactLevel >= 2 ? 'hidden' : 'hidden @[360px]:inline'}>
-                  {t('media.library.url')}
-                </span>
-              </button>
-            </HeaderActionTooltip>
-
             {/* Missing media indicator */}
             {currentProjectBrokenMediaIds.length > 0 && (
               <HeaderActionTooltip
@@ -1024,65 +966,6 @@ export const MediaLibrary = memo(function MediaLibrary({ onMediaSelect }: MediaL
         </TooltipProvider>
       </div>
 
-      <Dialog
-        open={showImportUrlDialog}
-        onOpenChange={(open) => {
-          setShowImportUrlDialog(open)
-          if (!open && !isImportUrlSubmitting) {
-            setImportUrlValue('')
-          }
-        }}
-      >
-        <DialogContent className="sm:max-w-[560px]">
-          <DialogHeader>
-            <DialogTitle>{t('media.library.importFromUrlTitle')}</DialogTitle>
-            <DialogDescription>{t('media.library.importFromUrlDescription')}</DialogDescription>
-          </DialogHeader>
-
-          <form onSubmit={handleImportUrl} className="space-y-4">
-            <div className="space-y-2">
-              <Input
-                autoFocus
-                type="url"
-                inputMode="url"
-                placeholder="https://example.com/video.mp4"
-                value={importUrlValue}
-                onChange={(event) => setImportUrlValue(event.target.value)}
-                disabled={isImportUrlSubmitting}
-              />
-              <p className="text-xs text-muted-foreground">
-                {t('media.library.importFromUrlHint')}
-              </p>
-            </div>
-
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => {
-                  if (!isImportUrlSubmitting) {
-                    setShowImportUrlDialog(false)
-                    setImportUrlValue('')
-                  }
-                }}
-                disabled={isImportUrlSubmitting}
-              >
-                {t('common.cancel')}
-              </Button>
-              <Button
-                type="submit"
-                disabled={
-                  !currentProjectId || importUrlValue.trim().length === 0 || isImportUrlSubmitting
-                }
-              >
-                {isImportUrlSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
-                {t('media.library.import')}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-
       {/* Error message */}
       {error && (
         <div className="mx-4 mt-3 p-3 bg-destructive/10 border border-destructive/50 rounded text-xs animate-in slide-in-from-top-2 duration-200">
@@ -1160,79 +1043,31 @@ export const MediaLibrary = memo(function MediaLibrary({ onMediaSelect }: MediaL
         </div>
       )}
 
-      {/* Search + view toggle always render so the toggle stays reachable
-          in Scene mode. The search input and the filter row below only scope
-          the media-library grid, so they're hidden when the Scene browser is
-          mounted (it has its own search). */}
+      {/* Search, filters, and sort */}
       <div className="px-4 pt-3 pb-2 space-y-2 flex-shrink-0">
-        {/* Search + Media/Scenes toggle group */}
+        {/* Search row */}
         <div className="@container flex items-center gap-2">
-          {!sceneBrowserOpen && (
-            <div className="relative group flex-1 min-w-0">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground group-focus-within:text-primary transition-colors" />
-              <Input
-                placeholder={t('media.searchMedia')}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-8 h-7 bg-secondary border border-border focus:border-primary text-foreground placeholder:text-muted-foreground text-xs"
-              />
-              {searchQuery && (
-                <button
-                  onClick={() => setSearchQuery('')}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary transition-colors"
-                >
-                  <X className="w-3 h-3" />
-                </button>
-              )}
-            </div>
-          )}
-          {sceneBrowserOpen && <div className="flex-1 min-w-0" aria-hidden />}
-          <div
-            role="group"
-            aria-label={t('media.library.libraryView')}
-            className="inline-flex items-center h-7 rounded-md border border-border bg-secondary p-0.5 shrink-0"
-          >
-            <HeaderActionTooltip label={t('media.library.showMediaLibrary')}>
+          <div className="relative group flex-1 min-w-0">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground group-focus-within:text-primary transition-colors" />
+            <Input
+              placeholder={t('media.searchMedia')}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-8 h-7 bg-secondary border border-border focus:border-primary text-foreground placeholder:text-muted-foreground text-xs"
+            />
+            {searchQuery && (
               <button
-                onClick={() => {
-                  if (sceneBrowserOpen) closeSceneBrowser()
-                }}
-                aria-pressed={!sceneBrowserOpen}
-                className={cn(
-                  'flex items-center gap-1 h-6 px-1.5 @[280px]:px-2 rounded-[3px] text-[11px] transition-colors duration-150',
-                  !sceneBrowserOpen
-                    ? 'bg-primary text-primary-foreground'
-                    : 'text-muted-foreground hover:text-foreground',
-                )}
+                onClick={() => setSearchQuery('')}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary transition-colors"
               >
-                <Film className="w-3 h-3" />
-                <span className="hidden @[280px]:inline">{t('media.library.mediaTab')}</span>
+                <X className="w-3 h-3" />
               </button>
-            </HeaderActionTooltip>
-            <HeaderActionTooltip label={t('media.library.searchScenes')}>
-              <button
-                onClick={() => {
-                  if (!sceneBrowserOpen) openSceneBrowser()
-                }}
-                aria-pressed={sceneBrowserOpen}
-                className={cn(
-                  'flex items-center gap-1 h-6 px-1.5 @[280px]:px-2 rounded-[3px] text-[11px] transition-colors duration-150',
-                  sceneBrowserOpen
-                    ? 'bg-primary text-primary-foreground'
-                    : 'text-muted-foreground hover:text-foreground',
-                )}
-              >
-                <ScanSearch className="w-3 h-3" />
-                <span className="hidden @[280px]:inline">{t('media.library.scenesTab')}</span>
-              </button>
-            </HeaderActionTooltip>
+            )}
           </div>
         </div>
 
-        {!sceneBrowserOpen && (
-          <>
-            {/* Filters and sort */}
-            <div className="@container flex items-center gap-1.5 min-w-0">
+        {/* Filters and sort */}
+        <div className="@container flex items-center gap-1.5 min-w-0">
               {/* Filter by type */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -1362,9 +1197,7 @@ export const MediaLibrary = memo(function MediaLibrary({ onMediaSelect }: MediaL
                 </div>
               </div>
             </div>
-          </>
-        )}
-      </div>
+        </div>
 
       {/* Composition navigation banner — shown when inside a sub-composition */}
       {activeCompositionId !== null && activeCompLabel && (
@@ -1383,13 +1216,9 @@ export const MediaLibrary = memo(function MediaLibrary({ onMediaSelect }: MediaL
 
       {/* Scrollable content: wrapper provides relative context for the drag overlay */}
       <div className="flex-1 relative min-h-0">
-        {sceneBrowserOpen && <SceneBrowserPanel className="absolute inset-0 bg-background" />}
         <div
           ref={scrollContainerRef}
-          className={cn(
-            'relative h-full overflow-y-auto px-4 pb-4 [scrollbar-gutter:stable]',
-            sceneBrowserOpen && 'hidden',
-          )}
+          className="relative h-full overflow-y-auto px-4 pb-4 [scrollbar-gutter:stable]"
           onClick={handleScrollContentClick}
           onDragEnter={handleDragEnter}
           onDragOver={handleDragOver}

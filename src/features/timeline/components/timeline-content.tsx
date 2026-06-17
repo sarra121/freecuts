@@ -689,7 +689,12 @@ export const TimelineContent = memo(function TimelineContent({
   const fps = useTimelineStore((s) => s.fps)
 
   const videoTracks = useMemo(
-    () => tracks.filter((track) => getTrackKind(track) === 'video'),
+    // MatchView: shape tracks (annotation overlays) render in the visual /
+    // "video" section so their clips appear. Drag-drop targeting elsewhere
+    // still uses `getTrackKind === 'video'` (null for shape tracks), so
+    // media drops won't land on them. Mirrors the same widening in
+    // timeline.tsx — both components compute their own videoTracks.
+    () => tracks.filter((track) => getTrackKind(track) === 'video' || track.kind === 'shape'),
     [tracks],
   )
   const audioTracks = useMemo(

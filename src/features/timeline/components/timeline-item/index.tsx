@@ -72,6 +72,7 @@ import {
 } from '../../utils/transition-edit-guards'
 import { ClipContent } from './clip-content'
 import { ClipIndicators } from './clip-indicators'
+import { ClipShapeKeyframes } from './clip-shape-keyframes'
 import { shouldSuppressLinkedSyncBadge } from './linked-sync-badge'
 import { shouldSuppressTimelineItemClickAfterDrag } from './post-drag-click-guard'
 import { TrimHandles } from './trim-handles'
@@ -3411,6 +3412,10 @@ export const TimelineItem = memo(
                 audioWaveformScale={audioVisualizationScale}
                 linkedSyncOffsetFrames={linkedSyncOffsetFrames}
               />
+
+              {/* Per-shape change-log bars — one thin tick per recorded
+                  property change. No-op for non-shape items. */}
+              <ClipShapeKeyframes item={item} />
 
               {!useCompactClipShell && (
                 /* Status indicators */

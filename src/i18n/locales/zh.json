@@ -73,7 +73,10 @@
       "autoSave": "自动保存",
       "interval": "间隔",
       "intervalMinutes": "{{count}} 分钟",
-      "undoHistoryDepth": "撤销历史深度"
+      "undoHistoryDepth": "撤销历史深度",
+      "theme": "主题",
+      "themeDark": "深色",
+      "themeLight": "浅色"
     },
     "ai": {
       "captionSampleInterval": "字幕采样间隔",

@@ -1,14 +1,16 @@
 import { useMemo, useCallback, memo } from 'react'
 import { usePreviewBridgeStore } from '@/shared/state/preview-bridge'
-import { GizmoOverlay } from './gizmo-overlay'
-import { MaskEditorContainer } from './mask-editor-container'
-import { CornerPinContainer } from './corner-pin-container'
+// MatchView: disabled overlay imports — uncomment to restore.
+// import { GizmoOverlay } from './gizmo-overlay'
+// import { MaskEditorContainer } from './mask-editor-container'
+// import { CornerPinContainer } from './corner-pin-container'
 import { PreviewPerfPanel } from './preview-perf-panel'
 import { PreviewStage } from './preview-stage'
-import { RollingEditOverlay } from './rolling-edit-overlay'
-import { RippleEditOverlay } from './ripple-edit-overlay'
-import { SlipEditOverlay } from './slip-edit-overlay'
-import { SlideEditOverlay } from './slide-edit-overlay'
+// MatchView: edit-mode overlays disabled — uncomment to restore.
+// import { RollingEditOverlay } from './rolling-edit-overlay'
+// import { RippleEditOverlay } from './ripple-edit-overlay'
+// import { SlipEditOverlay } from './slip-edit-overlay'
+// import { SlideEditOverlay } from './slide-edit-overlay'
 import { useGpuEffectsOverlay } from '../hooks/use-gpu-effects-overlay'
 import {
   usePreviewCompositionBaseModel,
@@ -86,14 +88,18 @@ export const VideoPreview = memo(function VideoPreview({
     transitions,
     mediaById,
     brokenMediaCount,
-    hasRolling2Up,
-    hasRipple2Up,
-    hasSlip4Up,
-    hasSlide4Up,
+    // MatchView: edit-mode overlay flags unused (overlays disabled).
+    // hasRolling2Up,
+    // hasRipple2Up,
+    // hasSlip4Up,
+    // hasSlide4Up,
     activeGizmoItemType,
     isGizmoInteracting,
     isPlaying,
-    zoom,
+    // MatchView: zoom unused here (was passed only to disabled overlays).
+    // The zoom value is still read from the store inside the view model
+    // and still controls preview sizing. Don't read here unless needed.
+    // zoom,
     useProxy,
     busAudioEq,
     blobUrlVersion,
@@ -101,7 +107,8 @@ export const VideoPreview = memo(function VideoPreview({
     playerSize,
     needsOverflow,
     playerContainerRef,
-    playerContainerRect,
+    // MatchView: playerContainerRect unused (was passed only to disabled overlays).
+    // playerContainerRect,
     backgroundRef,
     setPlayerContainerRefCallback,
     handleBackgroundClick,
@@ -450,6 +457,10 @@ export const VideoPreview = memo(function VideoPreview({
       />
     ) : null
 
+  // MatchView: edit-mode overlays (ripple/rolling/slip/slide) disabled.
+  // Sports analysis doesn't use these multi-frame previews.
+  // Restore by uncommenting if needed.
+  /*
   const comparisonOverlay = hasRolling2Up ? (
     <RollingEditOverlay fps={fps} />
   ) : hasRipple2Up ? (
@@ -459,9 +470,17 @@ export const VideoPreview = memo(function VideoPreview({
   ) : hasSlide4Up ? (
     <SlideEditOverlay fps={fps} />
   ) : null
+  */
+  const comparisonOverlay = null
 
   const overlayControls = !suspendOverlay ? (
     <>
+      {/* MatchView: GizmoOverlay disabled — the video transformer / corner
+          handles aren't part of the sports-analysis workflow. Disabling this
+          also removes the SelectableItem click-capture layer (zIndex 100)
+          that was intercepting Konva-Stage shape-draw clicks. Restore by
+          uncommenting if you ever need legacy transform / click-to-select. */}
+      {/*
       <GizmoOverlay
         containerRect={playerContainerRect}
         playerSize={playerSize}
@@ -469,18 +488,25 @@ export const VideoPreview = memo(function VideoPreview({
         zoom={zoom}
         hitAreaRef={backgroundRef as React.RefObject<HTMLDivElement>}
       />
+      */}
+      {/* MatchView: MaskEditorContainer disabled — no shape-as-mask workflow.
+          Restore by uncommenting if mask editing becomes needed.
       <MaskEditorContainer
         containerRect={playerContainerRect}
         playerSize={playerSize}
         projectSize={{ width: project.width, height: project.height }}
         zoom={zoom}
       />
+      */}
+      {/* MatchView: CornerPinContainer disabled — no perspective-pin workflow.
+          Restore by uncommenting if needed.
       <CornerPinContainer
         containerRect={playerContainerRect}
         playerSize={playerSize}
         projectSize={{ width: project.width, height: project.height }}
         zoom={zoom}
       />
+      */}
     </>
   ) : null
 

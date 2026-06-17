@@ -10,7 +10,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Separator } from '@/components/ui/separator'
 import { Link } from '@tanstack/react-router'
 import {
   createProjectFormSchema,
@@ -28,16 +27,21 @@ interface ProjectFormProps {
   defaultValues?: Partial<ProjectFormData>
   isEditing?: boolean
   isSubmitting?: boolean
+  /** Retained for API compatibility; the compact form no longer renders its
+   *  own page header (the dialog/route supplies the title). */
   hideHeader?: boolean
 }
 
+/**
+ * Compact project create/edit form. Single column, sized to live inside a small
+ * dialog: name, format preset (or custom dimensions), frame rate, description.
+ */
 export function ProjectForm({
   onSubmit,
   onCancel,
   defaultValues,
   isEditing = false,
   isSubmitting = false,
-  hideHeader = false,
 }: ProjectFormProps) {
   const { t } = useTranslation()
   const resolvedDefaultValues = useMemo(
@@ -63,7 +67,7 @@ export function ProjectForm({
   })
 
   const matchTemplateId = (width: number, height: number) =>
-    PROJECT_TEMPLATES.find((t) => t.width === width && t.height === height)?.id ?? 'custom'
+    PROJECT_TEMPLATES.find((tpl) => tpl.width === width && tpl.height === height)?.id ?? 'custom'
 
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | undefined>(() =>
     matchTemplateId(resolvedDefaultValues.width, resolvedDefaultValues.height),
@@ -93,203 +97,140 @@ export function ProjectForm({
     setSelectedTemplateId('custom')
   }
 
+  const inputClass =
+    'w-full px-3 py-2 bg-secondary border border-input rounded-md text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition-all'
+
   return (
-    <div className="bg-background">
-      {/* Header */}
-      {!hideHeader && (
-        <div className="panel-header border-b border-border">
-          <div className="max-w-[1400px] mx-auto px-6 py-5">
-            <h1 className="text-2xl font-semibold tracking-tight text-foreground mb-1">
-              {isEditing ? t('projects.form.editTitle') : t('projects.form.createTitle')}
-            </h1>
-            <p className="text-sm text-muted-foreground">
-              {isEditing ? t('projects.form.editSubtitle') : t('projects.form.createSubtitle')}
-            </p>
-          </div>
-        </div>
-      )}
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+      {/* Project Name */}
+      <div>
+        <label htmlFor="name" className="block text-sm font-medium text-foreground mb-1.5">
+          {t('projects.form.projectName')} <span className="text-destructive">*</span>
+        </label>
+        <input
+          id="name"
+          type="text"
+          {...register('name')}
+          className={inputClass}
+          placeholder={t('projects.form.projectNamePlaceholder')}
+        />
+        {errors.name && <p className="mt-1 text-xs text-destructive">{errors.name.message}</p>}
+      </div>
 
-      {/* Form */}
-      <div className={hideHeader ? '' : 'max-w-[1400px] mx-auto px-6 py-8'}>
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-[minmax(320px,420px)_1fr] gap-6 items-start">
-            {/* Project Details */}
-            <div
-              className={`panel-bg border border-border rounded-lg p-6 ${hideHeader ? '' : 'lg:sticky lg:top-6'}`}
-            >
-              <div className="flex items-center gap-3 mb-6">
-                <div className="h-8 w-1 bg-primary rounded-full" />
-                <h2 className="text-lg font-medium text-foreground">
-                  {t('projects.form.projectDetails')}
-                </h2>
-              </div>
-
-              <div className="space-y-5">
-                {/* Project Name */}
-                <div>
-                  <label htmlFor="name" className="block text-sm font-medium text-foreground mb-2">
-                    {t('projects.form.projectName')} <span className="text-destructive">*</span>
-                  </label>
-                  <input
-                    id="name"
-                    type="text"
-                    {...register('name')}
-                    className="w-full px-3 py-2 bg-secondary border border-input rounded-md text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition-all"
-                    placeholder={t('projects.form.projectNamePlaceholder')}
-                  />
-                  {errors.name && (
-                    <p className="mt-1.5 text-sm text-destructive">{errors.name.message}</p>
-                  )}
-                </div>
-
-                {/* Description */}
-                <div>
-                  <label
-                    htmlFor="description"
-                    className="block text-sm font-medium text-foreground mb-2"
-                  >
-                    {t('projects.form.description')}
-                  </label>
-                  <textarea
-                    id="description"
-                    rows={4}
-                    {...register('description')}
-                    className="w-full px-3 py-2 bg-secondary border border-input rounded-md text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition-all resize-none"
-                    placeholder={t('projects.form.descriptionPlaceholder')}
-                  />
-                  {errors.description && (
-                    <p className="mt-1.5 text-sm text-destructive">{errors.description.message}</p>
-                  )}
-                </div>
-
-                {/* Frame Rate */}
-                <div>
-                  <label htmlFor="fps" className="block text-sm font-medium text-foreground mb-2">
-                    {t('projects.form.frameRate')}
-                  </label>
-                  <Select
-                    value={fps.toString()}
-                    onValueChange={(value) =>
-                      setValue('fps', Number(value), { shouldValidate: true })
-                    }
-                  >
-                    <SelectTrigger id="fps">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {fpsOptions.map((preset) => (
-                        <SelectItem key={preset.value} value={preset.value.toString()}>
-                          {preset.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {errors.fps && (
-                    <p className="mt-1.5 text-sm text-destructive">{errors.fps.message}</p>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Video Settings */}
-            <div className="panel-bg border border-border rounded-lg p-6">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="h-8 w-1 bg-primary rounded-full" />
-                <h2 className="text-lg font-medium text-foreground">
-                  {t('projects.form.resolution')}
-                </h2>
-              </div>
-
-              <ProjectTemplatePicker
-                selectedTemplateId={
-                  selectedTemplateId === 'custom' ? undefined : selectedTemplateId
-                }
-                onSelectTemplate={handleSelectTemplate}
-                onSelectCustom={handleCustomSelect}
-                isCustomSelected={selectedTemplateId === 'custom'}
+      {/* Format */}
+      <div>
+        <label className="block text-sm font-medium text-foreground mb-1.5">
+          {t('projects.form.resolution')}
+        </label>
+        <ProjectTemplatePicker
+          selectedTemplateId={selectedTemplateId === 'custom' ? undefined : selectedTemplateId}
+          onSelectTemplate={handleSelectTemplate}
+          onSelectCustom={handleCustomSelect}
+          isCustomSelected={selectedTemplateId === 'custom'}
+        />
+        {selectedTemplateId === 'custom' && (
+          <div className="mt-3 flex items-center gap-3">
+            <div className="flex-1">
+              <label htmlFor="width" className="block text-xs font-medium text-muted-foreground mb-1">
+                {t('projects.form.widthPx')}
+              </label>
+              <input
+                id="width"
+                type="number"
+                {...register('width', { valueAsNumber: true })}
+                className={inputClass}
+                placeholder="1920"
+                min={320}
               />
-              {selectedTemplateId === 'custom' && (
-                <div className="mt-5 flex items-center gap-3">
-                  <div className="flex-1">
-                    <label
-                      htmlFor="width"
-                      className="block text-xs font-medium text-muted-foreground mb-1"
-                    >
-                      {t('projects.form.widthPx')}
-                    </label>
-                    <input
-                      id="width"
-                      type="number"
-                      {...register('width', { valueAsNumber: true })}
-                      className="w-full px-3 py-2 bg-secondary border border-input rounded-md text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition-all"
-                      placeholder="1920"
-                      min={320}
-                    />
-                    {errors.width && (
-                      <p className="mt-1 text-xs text-destructive">{errors.width.message}</p>
-                    )}
-                  </div>
-                  <span className="text-muted-foreground mt-4">×</span>
-                  <div className="flex-1">
-                    <label
-                      htmlFor="height"
-                      className="block text-xs font-medium text-muted-foreground mb-1"
-                    >
-                      {t('projects.form.heightPx')}
-                    </label>
-                    <input
-                      id="height"
-                      type="number"
-                      {...register('height', { valueAsNumber: true })}
-                      className="w-full px-3 py-2 bg-secondary border border-input rounded-md text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition-all"
-                      placeholder="1080"
-                      min={240}
-                    />
-                    {errors.height && (
-                      <p className="mt-1 text-xs text-destructive">{errors.height.message}</p>
-                    )}
-                  </div>
-                </div>
+              {errors.width && (
+                <p className="mt-1 text-xs text-destructive">{errors.width.message}</p>
+              )}
+            </div>
+            <span className="text-muted-foreground mt-4">×</span>
+            <div className="flex-1">
+              <label
+                htmlFor="height"
+                className="block text-xs font-medium text-muted-foreground mb-1"
+              >
+                {t('projects.form.heightPx')}
+              </label>
+              <input
+                id="height"
+                type="number"
+                {...register('height', { valueAsNumber: true })}
+                className={inputClass}
+                placeholder="1080"
+                min={240}
+              />
+              {errors.height && (
+                <p className="mt-1 text-xs text-destructive">{errors.height.message}</p>
               )}
             </div>
           </div>
-
-          <Separator />
-
-          {/* Actions */}
-          <div className="flex gap-3 justify-end">
-            {onCancel ? (
-              <Button
-                type="button"
-                variant="outline"
-                size="lg"
-                disabled={isSubmitting}
-                onClick={onCancel}
-              >
-                {t('common.cancel')}
-              </Button>
-            ) : (
-              <Link to="/projects">
-                <Button type="button" variant="outline" size="lg" disabled={isSubmitting}>
-                  {t('common.cancel')}
-                </Button>
-              </Link>
-            )}
-            <Button
-              type="submit"
-              size="lg"
-              className="min-w-[160px]"
-              disabled={!isValid || isSubmitting}
-            >
-              {isSubmitting
-                ? t('common.saving')
-                : isEditing
-                  ? t('projects.form.updateProject')
-                  : t('projects.form.createProject')}
-            </Button>
-          </div>
-        </form>
+        )}
       </div>
-    </div>
+
+      {/* Frame Rate */}
+      <div>
+        <label htmlFor="fps" className="block text-sm font-medium text-foreground mb-1.5">
+          {t('projects.form.frameRate')}
+        </label>
+        <Select
+          value={fps.toString()}
+          onValueChange={(value) => setValue('fps', Number(value), { shouldValidate: true })}
+        >
+          <SelectTrigger id="fps">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {fpsOptions.map((preset) => (
+              <SelectItem key={preset.value} value={preset.value.toString()}>
+                {preset.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {errors.fps && <p className="mt-1 text-xs text-destructive">{errors.fps.message}</p>}
+      </div>
+
+      {/* Description (optional) */}
+      <div>
+        <label htmlFor="description" className="block text-sm font-medium text-foreground mb-1.5">
+          {t('projects.form.description')}
+        </label>
+        <textarea
+          id="description"
+          rows={2}
+          {...register('description')}
+          className={`${inputClass} resize-none`}
+          placeholder={t('projects.form.descriptionPlaceholder')}
+        />
+        {errors.description && (
+          <p className="mt-1 text-xs text-destructive">{errors.description.message}</p>
+        )}
+      </div>
+
+      {/* Actions */}
+      <div className="flex gap-2 justify-end pt-1">
+        {onCancel ? (
+          <Button type="button" variant="outline" disabled={isSubmitting} onClick={onCancel}>
+            {t('common.cancel')}
+          </Button>
+        ) : (
+          <Link to="/projects">
+            <Button type="button" variant="outline" disabled={isSubmitting}>
+              {t('common.cancel')}
+            </Button>
+          </Link>
+        )}
+        <Button type="submit" disabled={!isValid || isSubmitting}>
+          {isSubmitting
+            ? t('common.saving')
+            : isEditing
+              ? t('projects.form.updateProject')
+              : t('projects.form.createProject')}
+        </Button>
+      </div>
+    </form>
   )
 }

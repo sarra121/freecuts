@@ -74,15 +74,20 @@ export function useToolShortcuts(callbacks: TimelineShortcutCallbacks) {
   )
 
   // Tool: R - Toggle Rate Stretch Tool
-  useHotkeys(
-    hotkeys.RATE_STRETCH_TOOL,
-    (event) => {
-      event.preventDefault()
-      setActiveTool(activeTool === 'rate-stretch' ? 'select' : 'rate-stretch')
-    },
-    HOTKEY_OPTIONS,
-    [activeTool, setActiveTool],
-  )
+  // MatchView strip-down: the Rate Stretch tool button was removed from the
+  // timeline header, so this shortcut is disabled to avoid stranding the user
+  // in an invisible tool. The binding/handler are kept here (commented) rather
+  // than deleted, so the feature can be restored. The HOTKEYS config and the
+  // rate-stretch engine code are untouched.
+  // useHotkeys(
+  //   hotkeys.RATE_STRETCH_TOOL,
+  //   (event) => {
+  //     event.preventDefault()
+  //     setActiveTool(activeTool === 'rate-stretch' ? 'select' : 'rate-stretch')
+  //   },
+  //   HOTKEY_OPTIONS,
+  //   [activeTool, setActiveTool],
+  // )
 
   // Tool: Y - Toggle Slip Tool
   useHotkeys(

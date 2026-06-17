@@ -7,7 +7,7 @@ import { proxyService } from '@/features/media-library/services/proxy-service'
 import { getSharedProxyKey } from '@/features/media-library/utils/proxy-key'
 import { blobUrlManager } from '@/infrastructure/browser/blob-url-manager'
 import { registerKeyframeIndex } from '@/shared/utils/keyframe-index-registry'
-import type { TimelineTrack } from '@/types/timeline'
+import type { ShapeItem, TimelineTrack } from '@/types/timeline'
 import { createLogger } from '@/shared/logging/logger'
 import { validateMediaHandle } from '@/infrastructure/storage'
 import type { MediaErrorType } from '@/features/media-library/types'
@@ -206,6 +206,20 @@ export async function resolveMediaUrls(
           }
         })
         resolutionPromises.push(promise)
+      }
+
+      // Image-overlay shapes carry their media id inside imageShapeData. Resolve
+      // it to an object URL so the export worker (which can't reach the media
+      // store) can preload the picture.
+      if (item.type === 'shape' && (item as ShapeItem).shapeType === 'image') {
+        const shapeItem = item as ShapeItem
+        const imageMediaId = shapeItem.imageShapeData?.mediaId
+        if (imageMediaId) {
+          const promise = resolveMediaUrl(imageMediaId).then((blobUrl) => {
+            if (shapeItem.imageShapeData) shapeItem.imageShapeData.src = blobUrl
+          })
+          resolutionPromises.push(promise)
+        }
       }
     }
   }

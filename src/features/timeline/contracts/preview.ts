@@ -22,6 +22,7 @@ export {
   type DroppableMediaType,
 } from '../utils/dropped-media'
 export { performInsertEdit, performOverwriteEdit } from '../stores/actions/source-edit-actions'
+export { insertFreezeFrame } from '../stores/actions/item-edit-actions'
 export { resolveSourceEditTrackTargets } from '../utils/source-edit-targeting'
 export { getTrackKind } from '../utils/classic-tracks'
 export { createClassicTrack } from '../utils/classic-tracks'

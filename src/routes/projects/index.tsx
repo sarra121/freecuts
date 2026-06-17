@@ -7,7 +7,7 @@ import { createLogger } from '@/shared/logging/logger'
 const logger = createLogger('ProjectsIndex')
 import { Button } from '@/components/ui/button'
 import { Plus, Upload, FolderOpen, File, Github } from 'lucide-react'
-import { FreeCutLogo } from '@/components/brand/freecut-logo'
+import { MatchViewLogo } from '@/components/brand/matchview-logo'
 import { ProjectList } from '@/features/projects/components/project-list'
 import { ProjectForm } from '@/features/projects/components/project-form'
 import {
@@ -20,7 +20,7 @@ import {
 } from '@/components/ui/dialog'
 import { Progress } from '@/components/ui/progress'
 import { useProjectStore } from '@/features/projects/stores/project-store'
-import { useProjectActions } from '@/features/projects/hooks/use-project-actions'
+import { useProjectActions, useCreateProject } from '@/features/projects/hooks/use-project-actions'
 import {
   useProjects,
   useProjectsLoading,
@@ -52,7 +52,9 @@ function ProjectsIndex() {
   const navigate = useNavigate()
   const { t } = useTranslation()
   const [editingProject, setEditingProject] = useState<Project | null>(null)
+  const [isCreating, setIsCreating] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const createProject = useCreateProject()
 
   // Import state - two-step flow
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -240,6 +242,24 @@ function ProjectsIndex() {
     setEditingProject(project)
   }
 
+  const handleCreateSubmit = async (data: ProjectFormData) => {
+    setIsSubmitting(true)
+    try {
+      const result = await createProject(data)
+      if (result.success && result.project) {
+        // Navigate straight into the editor for the new project.
+        navigate({ to: '/editor/$projectId', params: { projectId: result.project.id } })
+      } else {
+        toast.error(t('projects.toasts.createFailed'), { description: result.error })
+        setIsSubmitting(false)
+      }
+    } catch (error) {
+      logger.error('Failed to create project:', error)
+      toast.error(t('projects.toasts.createFailed'), { description: t('projects.tryAgain') })
+      setIsSubmitting(false)
+    }
+  }
+
   const handleEditSubmit = async (data: ProjectFormData) => {
     if (!editingProject) return
 
@@ -262,7 +282,7 @@ function ProjectsIndex() {
         <div className="panel-header border-b border-border" data-no-marquee>
           <div className="max-w-[1920px] mx-auto px-6 py-5 flex items-center justify-between">
             <Link to="/">
-              <FreeCutLogo
+              <MatchViewLogo
                 variant="full"
                 size="md"
                 className="hover:opacity-80 transition-opacity"
@@ -286,12 +306,10 @@ function ProjectsIndex() {
                 <Upload className="w-4 h-4" />
                 {t('projects.importProject')}
               </Button>
-              <Link to="/projects/new">
-                <Button size="lg" className="gap-2">
-                  <Plus className="w-4 h-4" />
-                  {t('projects.newProject')}
-                </Button>
-              </Link>
+              <Button size="lg" className="gap-2" onClick={() => setIsCreating(true)}>
+                <Plus className="w-4 h-4" />
+                {t('projects.newProject')}
+              </Button>
             </div>
 
             {/* Hidden file input for import */}
@@ -339,11 +357,26 @@ function ProjectsIndex() {
         )}
       </div>
 
+      {/* Create Project Dialog (compact popup) */}
+      <Dialog open={isCreating} onOpenChange={(open) => !open && setIsCreating(false)}>
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{t('projects.form.createTitle')}</DialogTitle>
+            <DialogDescription>{t('projects.form.createSubtitle')}</DialogDescription>
+          </DialogHeader>
+          <ProjectForm
+            onSubmit={handleCreateSubmit}
+            onCancel={() => setIsCreating(false)}
+            isSubmitting={isSubmitting}
+          />
+        </DialogContent>
+      </Dialog>
+
       {/* Edit Project Dialog */}
       <Dialog open={!!editingProject} onOpenChange={(open) => !open && setEditingProject(null)}>
-        <DialogContent className="max-w-[1200px] w-[95vw] max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-2xl">{t('projects.form.editTitle')}</DialogTitle>
+            <DialogTitle>{t('projects.form.editTitle')}</DialogTitle>
             <DialogDescription>{t('projects.form.editSubtitle')}</DialogDescription>
           </DialogHeader>
           {editingProject && (
@@ -359,7 +392,6 @@ function ProjectsIndex() {
               }}
               isEditing={true}
               isSubmitting={isSubmitting}
-              hideHeader
             />
           )}
         </DialogContent>

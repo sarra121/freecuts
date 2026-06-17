@@ -594,6 +594,47 @@ export async function createCompositionRenderer(
           imageLoadPromises.push(loadPromise)
         }
       }
+
+      // Image-overlay shapes — preload their picture into imageElements (keyed
+      // by the shape's id), mirroring the ImageItem path above. `src` is set by
+      // resolveMediaUrls before export. A failed overlay load is non-fatal: skip
+      // it rather than aborting the whole render.
+      if (item.type === 'shape' && (item as ShapeItem).shapeType === 'image') {
+        const overlaySrc = (item as ShapeItem).imageShapeData?.src
+        if (overlaySrc && hasDom && typeof Image !== 'undefined') {
+          const img = new Image()
+          img.crossOrigin = 'anonymous'
+          const loadPromise = new Promise<void>((resolve) => {
+            img.onload = () => {
+              imageElements.set(item.id, {
+                source: img,
+                width: img.naturalWidth,
+                height: img.naturalHeight,
+              })
+              resolve()
+            }
+            img.onerror = () => resolve()
+          })
+          img.src = overlaySrc
+          imageLoadPromises.push(loadPromise)
+        } else if (overlaySrc && typeof createImageBitmap === 'function') {
+          const loadPromise = (async () => {
+            try {
+              const response = await fetch(overlaySrc)
+              if (!response.ok) return
+              const bitmap = await createImageBitmap(await response.blob())
+              imageElements.set(item.id, {
+                source: bitmap,
+                width: bitmap.width,
+                height: bitmap.height,
+              })
+            } catch {
+              // Non-fatal: overlay just won't appear in the export.
+            }
+          })()
+          imageLoadPromises.push(loadPromise)
+        }
+      }
     }
   }
 

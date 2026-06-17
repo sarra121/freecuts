@@ -830,6 +830,21 @@ const migrations: Record<number, Migration> = {
       }
     },
   },
+  /**
+   * Version 11: Unified Konva shape renderer — additive only.
+   *
+   * Introduces two new ShapeType values ('arrow', 'free-polygon') and two
+   * optional ShapeItem fields (arrowData, freePolygonData). No existing
+   * project data needs reshaping; this no-op exists to gate older app
+   * builds from silently loading projects that may contain the new types.
+   *
+   * See docs/superpowers/specs/2026-05-24-konva-shape-renderer-design.md
+   */
+  11: {
+    version: 11,
+    description: 'Konva shape renderer: introduce arrow + free-polygon ShapeTypes (additive, no-op)',
+    migrate: (project: Project): Project => project,
+  },
 }
 
 /**
