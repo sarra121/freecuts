@@ -1,5 +1,5 @@
 import '@testing-library/jest-dom'
-import { afterEach } from 'vite-plus/test'
+import { afterEach, vi } from 'vite-plus/test'
 import '@/i18n'
 import { resetAutoKeyframeStore } from '@/features/keyframes/stores/auto-keyframe-store'
 
@@ -31,4 +31,19 @@ if (typeof testGlobal.ImageData === 'undefined') {
 
 afterEach(() => {
   resetAutoKeyframeStore()
+})
+
+Object.defineProperty(HTMLMediaElement.prototype, 'load', {
+  configurable: true,
+  value: vi.fn(),
+})
+
+Object.defineProperty(HTMLMediaElement.prototype, 'pause', {
+  configurable: true,
+  value: vi.fn(),
+})
+
+Object.defineProperty(HTMLMediaElement.prototype, 'play', {
+  configurable: true,
+  value: vi.fn(() => Promise.resolve()),
 })

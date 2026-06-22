@@ -133,13 +133,21 @@ function createMockCanvasContext(): CanvasRenderingContext2D {
     clearRect: vi.fn(),
     drawImage: vi.fn(),
     fillRect: vi.fn(),
-    getImageData: vi.fn(),
+    getImageData: vi.fn((_sx: number, _sy: number, sw: number, sh: number) => {
+      const width = Math.max(1, Math.floor(Number(sw) || 1))
+      const height = Math.max(1, Math.floor(Number(sh) || 1))
+
+      return new ImageData(width, height)
+    }),
     putImageData: vi.fn(),
     save: vi.fn(),
     restore: vi.fn(),
     translate: vi.fn(),
     scale: vi.fn(),
     rotate: vi.fn(),
+    transform: vi.fn(),
+    setTransform: vi.fn(),
+    resetTransform: vi.fn(),
     beginPath: vi.fn(),
     rect: vi.fn(),
     clip: vi.fn(),

@@ -65,7 +65,7 @@ jobs:
         run: vp run check
 
       - name: Preview Sync Stress (10x)
-        run: vp run test:preview-sync:stress -- --runs 10
+        run: vp run test:preview-sync:stress
 
       - name: Build
         run: vp build
