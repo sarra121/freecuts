@@ -62,17 +62,7 @@ function NewProject() {
           <Link to="/">
             <MatchViewLogo variant="full" size="md" className="hover:opacity-80 transition-opacity" />
           </Link>
-          <Button variant="outline" size="icon" className="h-10 w-10" asChild>
-            <a
-              href="https://github.com/walterlow/freecut"
-              target="_blank"
-              rel="noopener noreferrer"
-              data-tooltip={t('projects.viewOnGitHub')}
-              data-tooltip-side="left"
-            >
-              <Github className="w-5 h-5" />
-            </a>
-          </Button>
+          
         </div>
       </div>
 

@@ -77,3 +77,6 @@ tmp
 
 # Codebase docs vault is its own standalone git repo
 /docs/codebase/
+
+# MatchView demo backend is its own standalone git repo (separate from this fork)
+/backend/

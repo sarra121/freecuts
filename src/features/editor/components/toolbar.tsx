@@ -149,9 +149,9 @@ export const Toolbar = memo(function Toolbar({
       <SettingsDialog open={showSettingsDialog} onOpenChange={setShowSettingsDialog} />
 
       <div className="flex items-center gap-1.5">
-        {import.meta.env.DEV && import.meta.env.VITE_SHOW_DEBUG_PANEL !== 'false' && (
+        {/* {import.meta.env.DEV && import.meta.env.VITE_SHOW_DEBUG_PANEL !== 'false' && (
           <DebugPopover projectId={projectId} />
-        )}
+        )} */}
         <Button
           variant="outline"
           size="icon"
@@ -245,7 +245,7 @@ function SaveAnimationIcon({ className }: { className?: string }) {
   )
 }
 
-function DebugPopover({ projectId }: { projectId: string }) {
+/* function DebugPopover({ projectId }: { projectId: string }) {
   const { t } = useTranslation()
   const debugPanelOpen = useDebugStore((s) => s.debugPanelOpen)
   const setDebugPanelOpen = useDebugStore((s) => s.setDebugPanelOpen)
@@ -276,4 +276,4 @@ function DebugPopover({ projectId }: { projectId: string }) {
       </PopoverContent>
     </Popover>
   )
-}
+} */

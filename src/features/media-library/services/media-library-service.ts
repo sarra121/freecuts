@@ -17,23 +17,33 @@ async function readMediaSourceSafe(id: string): Promise<Blob | null> {
 }
 
 /**
- * Fire-and-forget mirror of a successfully-read source file into the
- * workspace folder so other origins (and coding agents) can read the
- * bytes from disk. No-op when already mirrored.
+ * Local media mirror — DISABLED (Phase C, cross-device cloud sync).
+ *
+ * This used to copy a successfully-read source file into the workspace
+ * `media/{id}/` folder so other same-machine origins could read the bytes
+ * from disk. Two problems for MatchView:
+ *  1. It only ever helped the SAME machine (a different device can't see the
+ *     workspace folder), so it never delivered cross-device sharing.
+ *  2. For `handle` media it double-stored the bytes on disk (original file +
+ *     workspace copy) — wasteful for multi-GB match videos.
+ *
+ * R2 is now the shared source of truth for media bytes; other devices
+ * download on demand. The function is kept as a no-op so its call sites stay
+ * intact and re-enabling is a one-line revert. Original body preserved below.
  */
 function mirrorSourceToWorkspaceInBackground(
-  id: string,
-  blob: Blob,
-  fileName: string | undefined,
+  _id: string,
+  _blob: Blob,
+  _fileName: string | undefined,
 ): void {
-  void (async () => {
-    try {
-      if (await hasMediaSource(id)) return
-      await writeMediaSource(id, blob, fileName)
-    } catch (error) {
-      logger.warn(`mirrorSourceToWorkspace(${id}) failed:`, error)
-    }
-  })()
+  // void (async () => {
+  //   try {
+  //     if (await hasMediaSource(id)) return
+  //     await writeMediaSource(id, blob, fileName)
+  //   } catch (error) {
+  //     logger.warn(`mirrorSourceToWorkspace(${id}) failed:`, error)
+  //   }
+  // })()
 }
 import {
   getAllMedia as getAllMediaDB,
@@ -59,9 +69,11 @@ import {
   saveCaptions,
   deleteCaptions,
   deleteScenes,
-  hasMediaSource,
+  // hasMediaSource + writeMediaSource were only used by the now-disabled local
+  // media mirror (mirrorSourceToWorkspaceInBackground). R2 cross-device sync
+  // replaces local mirroring (Phase C). readMediaSource stays — the read
+  // fallback still uses any existing workspace copy.
   readMediaSource,
-  writeMediaSource,
 } from '@/features/media-library/deps/storage'
 import {
   filmstripCache,
